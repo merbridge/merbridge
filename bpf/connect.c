@@ -31,6 +31,8 @@ struct bpf_map __section("maps") process_ip = {
 	.map_flags      = 0,
 };
 
+static __u32 outip = 1;
+
 __section("cgroup/connect4")
 int sock4_connect(struct bpf_sock_addr *ctx)
 {
@@ -75,7 +77,10 @@ int sock4_connect(struct bpf_sock_addr *ctx)
                 // printk("write cookie_original_dst failed");
                 return 0;
             }
-            ctx->user_ip4 = bpf_htonl(0x7f800001); // 127.0.0.1
+            ctx->user_ip4 = bpf_htonl(0x7f800000 | (outip++));
+            if (outip >> 20) {
+                outip = 1;
+            }
             ctx->user_port = bpf_htons(ISTIO_OUT_PORT);
         }
         else {

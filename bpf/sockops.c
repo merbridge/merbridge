@@ -31,7 +31,7 @@ struct bpf_map __section("maps") pair_original_dst = {
 	.map_flags      = 0,
 };
 
-struct bpf_map __section("maps") sock_ops_map = {
+struct bpf_map __section("maps") sock_pair_map = {
 	.type           = BPF_MAP_TYPE_SOCKHASH,
 	.key_size       = sizeof(struct pair),
 	.value_size     = sizeof(int),
@@ -76,14 +76,17 @@ int sockopts(struct bpf_sock_ops *skops)
 					p.sport = skops->local_port;
 					p.dip = skops->remote_ip4;
 					p.dport = skops->remote_port;
+					struct pair pp = p;
 					if (!p.dport)
 					 	p.dport = dd.re_dport;
 					printk("update pair: %d -> %d", p.sip, p.dip);
 					printk("update pair port: %d -> %d", p.sport, p.dport);
 					printk("update pair origin: %d:%d", dd.ip, dd.port);
 					bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
-					struct pair pp = p;
-					bpf_sock_hash_update(skops, &sock_ops_map, &pp, BPF_NOEXIST);
+					printk("store socks redirect from ip %d -> %d", pp.sip, pp.dip);
+					printk("store socks redirect from port %d -> %d", pp.sport, pp.dport);
+					long ret = bpf_sock_hash_update(skops, &sock_pair_map, &pp, BPF_NOEXIST);
+					printk("store sock redirect res: %d", ret);
 				} else {
 					// printk("cookie origin get error: %d", cookie);
 				}
