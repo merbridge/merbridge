@@ -23,16 +23,17 @@ load-map-cookie_original_dst:
 	[ -f /sys/fs/bpf/cookie_original_dst ] || sudo bpftool map create /sys/fs/bpf/cookie_original_dst type hash key 4 value 12 entries 65535 name cookie_original_dst
 
 load-map-local_pod_ips:
-	[ -f /sys/fs/bpf/local_pod_ips ] || sudo bpftool map create /sys/fs/bpf/local_pod_ips type hash key 4 value 4 entries 65535 name local_pod_ips
+	[ -f /sys/fs/bpf/local_pod_ips ] || sudo bpftool map create /sys/fs/bpf/local_pod_ips type hash key 4 value 4 entries 1024 name local_pod_ips
 
 load-map-process_ip:
-	[ -f /sys/fs/bpf/process_ip ] || sudo bpftool map create /sys/fs/bpf/process_ip type hash key 4 value 4 entries 65535 name process_ip
+	[ -f /sys/fs/bpf/process_ip ] || sudo bpftool map create /sys/fs/bpf/process_ip type hash key 4 value 4 entries 1024 name process_ip
 
 load-map-pair_original_dst:
-	[ -f /sys/fs/bpf/pair_original_dst ] || sudo bpftool map create /sys/fs/bpf/pair_original_dst type hash key 12 value 12 entries 65535 name pair_original_dst
+	[ -f /sys/fs/bpf/pair_original_dst ] || sudo bpftool map create /sys/fs/bpf/pair_original_dst type hash key 12 value 12 entries 1024 name pair_original_dst
 
 load-map-sock_pair_map:
-	[ -f /sys/fs/bpf/sock_pair_map ] || sudo bpftool map create /sys/fs/bpf/sock_pair_map type sockhash key 12 value 4 entries 65535 name sock_pair_map
+	# [ -f /sys/fs/bpf/sock_pair_map ] || sudo bpftool map pin id $(shell sudo bpftool prog show pinned "/sys/fs/bpf/sockops" | grep -o -E 'map_ids [0-9,]+' | awk -F, '{print $$4}') "/sys/fs/bpf/sock_pair_map"
+	[ -f /sys/fs/bpf/sock_pair_map ] || sudo bpftool map create /sys/fs/bpf/sock_pair_map type sockhash key 12 value 4 entries 1024 name sock_pair_map
 
 clean-maps:
 	rm -f /sys/fs/bpf/sock_pair_map /sys/fs/bpf/pair_original_dst /sys/fs/bpf/process_ip /sys/fs/bpf/local_pod_ips /sys/fs/bpf/cookie_original_dst

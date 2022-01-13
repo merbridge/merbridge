@@ -43,8 +43,8 @@ int sock4_connect(struct bpf_sock_addr *ctx)
     __u32 flag = 0;
     if (!bpf_map_lookup_elem(&local_pod_ips, &flag)) {
         printk("init ip tables");
-        __u32 ip1 = 117502986;
-        __u32 ip2 = 134280202;
+        __u32 ip1 = 50394122;
+        __u32 ip2 = 117502986;
         __u32 v1 = 0;
         __u32 v2 = 0;
         __u32 v3 = 0;
@@ -62,6 +62,9 @@ int sock4_connect(struct bpf_sock_addr *ctx)
 
     if (is_port_listen_current_ns(ctx, ISTIO_OUT_PORT)) {
         if (uid != 1337) {
+            if (bpf_htonl(ctx->user_ip4) >> 24 == 0x7f) {
+                return 1;
+            }
             // app -> others
             // we need redirect it to envoy.
             printk("connect app -> others: %x %d", bpf_htonl(ctx->user_ip4), bpf_htons(ctx->user_port));
@@ -89,7 +92,7 @@ int sock4_connect(struct bpf_sock_addr *ctx)
             __u32 ip = ctx->user_ip4;
             if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
                 // dst ip is not in this node, bypass
-                // printk("")
+                printk("dst ip is not in this node: %d", ip);
                 return 1;
             }
             // dst ip is in this node, but not the current pod, 

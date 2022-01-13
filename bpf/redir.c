@@ -9,7 +9,7 @@
 struct bpf_map __section("maps") sock_pair_map = {
 	.type           = BPF_MAP_TYPE_SOCKHASH,
 	.key_size       = sizeof(struct pair),
-	.value_size     = sizeof(int),
+	.value_size     = sizeof(__u32),
 	.max_entries    = 65535,
 	.map_flags      = 0,
 };
@@ -18,7 +18,6 @@ struct bpf_map __section("maps") sock_pair_map = {
 __section("sk_msg")
 int msg_redir(struct sk_msg_md *msg)
 {
-	__u64 flags = BPF_F_INGRESS;
     struct pair p;
     p.sip = msg->local_ip4;
     p.sport = msg->local_port;
@@ -26,8 +25,10 @@ int msg_redir(struct sk_msg_md *msg)
     p.dport = msg->remote_port;
     // printk("redirect from ip %d -> %d", p.sip, p.dip);
     // printk("redirect from port %d -> %d", p.sport, p.dport);
-	// long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, flags);
-	// printk("redirect res: %d", res);
+	long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
+	if (res == 1) {
+		printk("success redir msg: %s", msg->data);
+	}
 	return 1;
 }
 

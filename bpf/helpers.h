@@ -28,7 +28,8 @@ struct bpf_map {
 
 static __u64 (*bpf_get_current_pid_tgid)() = (void *)
     BPF_FUNC_get_current_pid_tgid;
-static __u64 (*bpf_get_current_uid_gid)() = (void*) BPF_FUNC_get_current_uid_gid;
+static __u64 (*bpf_get_current_uid_gid)() = (void *)
+    BPF_FUNC_get_current_uid_gid;
 static void (*bpf_trace_printk)(const char *fmt, int fmt_size,
                                 ...) = (void *)BPF_FUNC_trace_printk;
 static __u64 (*bpf_get_current_comm)(void *buf, __u32 size_of_buf) = (void *)
@@ -53,9 +54,9 @@ static long (*bpf_sk_release)(struct bpf_sock *sock) = (void *)
 static long (*bpf_sock_hash_update)(
     struct bpf_sock_ops *skops, struct bpf_map *map, void *key,
     __u64 flags) = (void *)BPF_FUNC_sock_hash_update;
-static long (*bpf_msg_redirect_hash)(
-    struct sk_msg_md *md, struct bpf_map *map, void *key,
-    __u64 flags) = (void *)BPF_FUNC_msg_redirect_hash;
+static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
+                                     void *key, __u64 flags) = (void *)
+    BPF_FUNC_msg_redirect_hash;
 
 #ifndef printk
 #define printk(fmt, ...)                                                       \
@@ -65,21 +66,18 @@ static long (*bpf_msg_redirect_hash)(
   })
 #endif
 
-#define __uint(name, val) int (*name)[val]
+#define __uint(name, val) int(*name)[val]
 #define __type(name, val) typeof(val) *name
 #define __array(name, val) typeof(val) *name[]
 
-
-#define SEC(name) \
-	_Pragma("GCC diagnostic push")					    \
-	_Pragma("GCC diagnostic ignored \"-Wignored-attributes\"")	    \
-	__attribute__((section(name), used))				    \
-	_Pragma("GCC diagnostic pop")					    \
+#define SEC(name)                                                              \
+  _Pragma("GCC diagnostic push")                                               \
+      _Pragma("GCC diagnostic ignored \"-Wignored-attributes\"")               \
+          __attribute__((section(name), used)) _Pragma("GCC diagnostic pop")
 
 /* Avoid 'linux/stddef.h' definition of '__always_inline'. */
 #undef __always_inline
 #define __always_inline inline __attribute__((always_inline))
-
 
 static inline int is_port_listen_current_ns(void *ctx, __u16 port) {
 

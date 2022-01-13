@@ -12,13 +12,6 @@ struct bpf_map __section("maps") pair_original_dst = {
 	.map_flags      = 0,
 };
 
-// struct {
-//     __uint(type, BPF_MAP_TYPE_HASH); 
-//     __type(key, struct pair);          
-//     __type(value, struct origin_info);  
-//     __uint(max_entries, 1024);   
-// } pair_original_dst SEC(".maps");
-
 __section("cgroup/getsockopt")
 int get_sockopt(struct bpf_sockopt *ctx)
 {
