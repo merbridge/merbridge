@@ -1,0 +1,17 @@
+name: eBPF prog compile
+
+on:
+  push:
+    branches: [ main, test ]
+  pull_request:
+    branches: [ main, test ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: make
+      run: ARCH=x86 make compile

@@ -1,7 +1,5 @@
 #include <linux/bpf.h>
 #include <linux/in.h>
-#include <stdio.h>
-#include <sys/socket.h>
 #include "headers/helpers.h"
 #include "headers/istio.h"
 
@@ -43,7 +41,7 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
 {
 	__u64 cookie = bpf_get_socket_cookie_ops(skops);
 	void * dst = bpf_map_lookup_elem(&cookie_original_dst, &cookie);
-	if (dst != NULL) {
+	if (dst) {
 		struct origin_info dd = *(struct origin_info*)dst;
 		printk("sockops trace: %d, %d -> %d", dd.re_dport, skops->local_ip4, skops->remote_ip4);
 		if ((bpf_htons(dd.re_dport) == ISTIO_IN_PORT && skops->local_ip4 == skops->remote_ip4) || skops->local_ip4 == 100663423) {
@@ -91,7 +89,7 @@ int mb_sockops(struct bpf_sock_ops *skops)
 	switch (op) {
         // case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
         case BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB:
-			if (family == AF_INET){
+			if (family == 2){ //AFI_NET
 				return sockops_ipv4(skops);
 			}
             break;

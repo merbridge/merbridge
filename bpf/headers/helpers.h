@@ -2,7 +2,6 @@
 #include <linux/bpf_common.h>
 #include <linux/swab.h>
 #include <linux/types.h>
-#include <stdint.h>
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define bpf_htons(x) __builtin_bswap16(x)
@@ -63,19 +62,6 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
     bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);                 \
   })
 #endif
-
-#define __uint(name, val) int(*name)[val]
-#define __type(name, val) typeof(val) *name
-#define __array(name, val) typeof(val) *name[]
-
-#define SEC(name)                                                              \
-  _Pragma("GCC diagnostic push")                                               \
-      _Pragma("GCC diagnostic ignored \"-Wignored-attributes\"")               \
-          __attribute__((section(name), used)) _Pragma("GCC diagnostic pop")
-
-/* Avoid 'linux/stddef.h' definition of '__always_inline'. */
-#undef __always_inline
-#define __always_inline inline __attribute__((always_inline))
 
 static inline int is_port_listen_current_ns(void *ctx, __u16 port) {
 

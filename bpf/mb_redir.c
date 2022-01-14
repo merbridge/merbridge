@@ -1,7 +1,5 @@
 #include <linux/bpf.h>
 #include <linux/in.h>
-#include <stdio.h>
-#include <sys/socket.h>
 #include "headers/helpers.h"
 #include "headers/istio.h"
 
