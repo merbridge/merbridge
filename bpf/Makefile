@@ -1,6 +1,6 @@
 
 CC=clang
-CFLAGS=-O2 -g  -Wall -target bpf
+CFLAGS=-O2 -g  -Wall -target bpf -I/usr/include/$(shell uname -m)-linux-gnu
 CGROUP_PATH=/sys/fs/bpf
 
 TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o
