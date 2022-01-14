@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: eBPF prog compile
 
 on:
   push:
@@ -15,5 +15,3 @@ jobs:
     - uses: actions/checkout@v2
     - name: make
       run: make compile
-    - name: make check
-      run: make check
