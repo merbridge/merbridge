@@ -1,10 +1,7 @@
 
 load:
-	make -C bpf load
+	[ -f bpf/mb_connect.c ] && make -C bpf load || make -C bpf load-from-obj
 clean:
 	make -C bpf clean
 compile:
 	make -C bpf compile
-
-load-from-obj: 
-	make -C bpf load-from-source
