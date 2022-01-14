@@ -2,8 +2,8 @@
 #include <linux/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
-#include "helpers.h"
-#include "istio.h"
+#include "headers/helpers.h"
+#include "headers/istio.h"
 
 
 struct bpf_map __section("maps") sock_pair_map = {
@@ -16,18 +16,17 @@ struct bpf_map __section("maps") sock_pair_map = {
 
 
 __section("sk_msg")
-int msg_redir(struct sk_msg_md *msg)
+int mb_msg_redir(struct sk_msg_md *msg)
 {
-    struct pair p;
-    p.sip = msg->local_ip4;
-    p.sport = msg->local_port;
-    p.dip = msg->remote_ip4;
-    p.dport = msg->remote_port;
-    // printk("redirect from ip %d -> %d", p.sip, p.dip);
-    // printk("redirect from port %d -> %d", p.sport, p.dport);
+    struct pair p = {
+		.sip = msg->local_ip4,
+		.sport = msg->local_port,
+		.dip = msg->remote_ip4,
+		.dport = msg->remote_port,
+	};
 	long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
 	if (res == 1) {
-		printk("success redir msg: %s", msg->data);
+		printk("success redir msg.");
 	}
 	return 1;
 }

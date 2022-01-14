@@ -1,11 +1,11 @@
 #include <linux/bpf.h>
 #include <linux/in.h>
-#include "helpers.h"
+#include "headers/helpers.h"
 
 #define MAX_OPS_BUFF_LENGTH 4096
 
 struct bpf_map __section("maps") pair_original_dst = {
-	.type           = BPF_MAP_TYPE_HASH,
+	.type           = BPF_MAP_TYPE_LRU_HASH,
 	.key_size       = sizeof(struct pair),
 	.value_size     = sizeof(struct origin_info),
 	.max_entries    = 65535,
@@ -13,7 +13,7 @@ struct bpf_map __section("maps") pair_original_dst = {
 };
 
 __section("cgroup/getsockopt")
-int get_sockopt(struct bpf_sockopt *ctx)
+int mb_get_sockopt(struct bpf_sockopt *ctx)
 {
     // char comm[80];
 	// __u64 ptg = bpf_get_current_pid_tgid();

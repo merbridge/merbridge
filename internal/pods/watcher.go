@@ -37,9 +37,16 @@ func (w *watcher) Stop() {
 	close(w.stop)
 }
 
-func NewWatcher(client kubernetes.Interface, currentNodeName string) Watcher {
+func NewWatcher(client kubernetes.Interface, currentNodeName string,
+	onAddFunc func(obj interface{}),
+	onUpdateFunc func(oldObj, newObj interface{}),
+	onDeleteFunc func(obj interface{})) Watcher {
 	return &watcher{
 		client:          client,
 		currentNodeName: currentNodeName,
+		onAddFunc:       onAddFunc,
+		onUpdateFunc:    onUpdateFunc,
+		onDeleteFunc:    onDeleteFunc,
+		stop:            make(chan struct{}),
 	}
 }
