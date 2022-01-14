@@ -35,8 +35,6 @@ static void (*bpf_trace_printk)(const char *fmt, int fmt_size,
 static __u64 (*bpf_get_current_comm)(void *buf, __u32 size_of_buf) = (void *)
     BPF_FUNC_get_current_comm;
 
-static __u64 (*bpf_get_socket_cookie)(struct sk_buff *skb) = (void *)
-    BPF_FUNC_get_socket_cookie;
 static __u64 (*bpf_get_socket_cookie_ops)(struct bpf_sock_ops *skops) = (void *)
     BPF_FUNC_get_socket_cookie;
 static __u64 (*bpf_get_socket_cookie_addr)(struct bpf_sock_addr *ctx) = (void *)
@@ -94,21 +92,6 @@ static inline int is_port_listen_current_ns(void *ctx, __u16 port) {
     return 1;
   }
   return 0;
-}
-
-static int strcmp(char *c1, char *c2, int len) {
-  if (!c1 && !c2) {
-    return 1;
-  }
-  if (!c1 || !c2) {
-    return 0;
-  }
-  __u64 *cc1 = (__u64 *)c1;
-  __u64 *cc2 = (__u64 *)c2;
-  if (cc1[0] == cc2[0]) {
-    return 0;
-  }
-  return 1;
 }
 
 struct origin_info {
