@@ -1,3 +1,3 @@
-module github.com/kebe7jun/mebpf
+module github.com/merbridge/merbridge
 
 go 1.17
