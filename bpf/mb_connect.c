@@ -1,10 +1,10 @@
 #include <linux/bpf.h>
 #include <linux/in.h>
-#include "helpers.h"
-#include "istio.h"
+#include "headers/helpers.h"
+#include "headers/istio.h"
 
 struct bpf_map __section("maps") cookie_original_dst = {
-	.type           = BPF_MAP_TYPE_HASH,
+	.type           = BPF_MAP_TYPE_LRU_HASH,
 	.key_size       = sizeof(__u32),
 	.value_size     = sizeof(struct origin_info),
 	.max_entries    = 65535,
@@ -34,34 +34,19 @@ struct bpf_map __section("maps") process_ip = {
 static __u32 outip = 1;
 
 __section("cgroup/connect4")
-int sock4_connect(struct bpf_sock_addr *ctx)
+int mb_sock4_connect(struct bpf_sock_addr *ctx)
 {
     // init
     if (ctx->protocol != IPPROTO_TCP) {
         return 1;
     }
-    __u32 flag = 0;
-    if (!bpf_map_lookup_elem(&local_pod_ips, &flag)) {
-        printk("init ip tables");
-        __u32 ip1 = 50394122;
-        __u32 ip2 = 117502986;
-        __u32 v1 = 0;
-        __u32 v2 = 0;
-        __u32 v3 = 0;
-        bpf_map_update_elem(&local_pod_ips, &ip1, &v1, BPF_NOEXIST);
-        bpf_map_update_elem(&local_pod_ips, &ip2, &v2, BPF_NOEXIST);
-        bpf_map_update_elem(&local_pod_ips, &flag, &v3, BPF_NOEXIST);
-    }
-    char comm[80];
 	// __u64 ptg = bpf_get_current_pid_tgid() & 0xffffffff;
     __u32 pid = bpf_get_current_pid_tgid() & 0xffffffff;
-    bpf_get_current_comm(comm, sizeof(comm));
     __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    // printk("comm: %s, tgid: %d, pid: %d", comm, ptg >> 32, ptg & 0xffffffff);
     // printk("cookie: %d, connect to: ip: %x  port: %d", cookie, bpf_htonl(ctx->user_ip4), bpf_htons(ctx->user_port));
 
     if (is_port_listen_current_ns(ctx, ISTIO_OUT_PORT)) {
-        if (uid != 1337) {
+        if (uid != 1337) { // todo changeme
             if (bpf_htonl(ctx->user_ip4) >> 24 == 0x7f) {
                 return 1;
             }

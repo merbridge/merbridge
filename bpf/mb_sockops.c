@@ -2,12 +2,12 @@
 #include <linux/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
-#include "helpers.h"
-#include "istio.h"
+#include "headers/helpers.h"
+#include "headers/istio.h"
 
 
 struct bpf_map __section("maps") cookie_original_dst = {
-	.type           = BPF_MAP_TYPE_HASH,
+	.type           = BPF_MAP_TYPE_LRU_HASH,
 	.key_size       = sizeof(__u32),
 	.value_size     = sizeof(struct origin_info),
 	.max_entries    = 65535,
@@ -24,7 +24,7 @@ struct bpf_map __section("maps") process_ip = {
 };
 
 struct bpf_map __section("maps") pair_original_dst = {
-	.type           = BPF_MAP_TYPE_HASH,
+	.type           = BPF_MAP_TYPE_LRU_HASH,
 	.key_size       = sizeof(struct pair),
 	.value_size     = sizeof(struct origin_info),
 	.max_entries    = 65535,
@@ -41,8 +41,6 @@ struct bpf_map __section("maps") sock_pair_map = {
 
 int sockops_ipv4(struct bpf_sock_ops *skops)
 {
-
-	// skops->sk->priority = 0;
 	__u64 cookie = bpf_get_socket_cookie_ops(skops);
 	void * dst = bpf_map_lookup_elem(&cookie_original_dst, &cookie);
 	if (dst != NULL) {
@@ -62,30 +60,29 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
 		}
 		// get_sockopts can read pid and cookie, 
 		// we should write a new map named pair_original_dst 
-		struct pair p;
-		p.sip = skops->local_ip4;
-		p.sport = skops->local_port;
-		p.dip = skops->remote_ip4;
-		p.dport = skops->remote_port;
+		struct pair p = {
+			.sip = skops->local_ip4,
+			.sport = skops->local_port,
+			.dip = skops->remote_ip4,
+			.dport = skops->remote_port,
+		};
 		struct pair pp = p;
 		if (!p.dport)
 			p.dport = dd.re_dport;
-		printk("store socks redirect from ip %d -> %d", pp.sip, pp.dip);
-		printk("store socks redirect from port %d -> %d", pp.sport, pp.dport);
+		// printk("store socks redirect from ip %d -> %d", pp.sip, pp.dip);
+		// printk("store socks redirect from port %d -> %d", pp.sport, pp.dport);
 		long ret = bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
-		printk("update pair: %d -> %d", p.sip, p.dip);
-		printk("update pair port: %d -> %d", p.sport, p.dport);
-		printk("update pair origin: %d:%d", dd.ip, dd.port);
+		// printk("update pair: %d -> %d", p.sip, p.dip);
+		// printk("update pair port: %d -> %d", p.sport, p.dport);
+		// printk("update pair origin: %d:%d", dd.ip, dd.port);
 		ret = bpf_sock_hash_update(skops, &sock_pair_map, &pp, BPF_NOEXIST);
-		printk("update sockhash res: %d", ret);
-		// struct pair ppp = pp;
-		// bpf_map_lookup_elem(&sock_pair_map, &ppp);
+		// printk("update sockhash res: %d", ret);
 	} 
 	return 1;
 }
 
 __section("sockops")
-int sockopts(struct bpf_sock_ops *skops)
+int mb_sockops(struct bpf_sock_ops *skops)
 {
 	__u32 family, op;
 	family = skops->family;
