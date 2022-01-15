@@ -10,7 +10,7 @@ func LoadMBProgs() error {
 	if os.Getuid() != 0 {
 		return fmt.Errorf("root user in required for this process or container")
 	}
-	cmd := exec.Command("/usr/bin/make", "load")
+	cmd := exec.Command("make", "load")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
@@ -21,7 +21,7 @@ func LoadMBProgs() error {
 }
 
 func UnLoadMBProgs() error {
-	cmd := exec.Command("/usr/bin/make", "clean")
+	cmd := exec.Command("make", "clean")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()

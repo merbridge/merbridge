@@ -14,6 +14,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+var currentNodeIP string // for cache
+
 func main() {
 	if err := ebpfs.LoadMBProgs(); err != nil {
 		panic(err)
@@ -38,14 +40,22 @@ func main() {
 				return
 			}
 			fmt.Printf("got pod updated %s/%s\n", pod.Namespace, pod.Name)
-			// todo check pod is in this node.
-			_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-			err := m.Update(_ip, uint32(0), ebpf.UpdateAny)
-			if err != nil {
-				fmt.Printf("update process ip %s error: %v", pod.Status.PodIP, err)
+			podHostIP := pod.Status.HostIP
+			if currentNodeIP == "" {
+				if linux.IsCurrentNodeIP(podHostIP) {
+					currentNodeIP = podHostIP
+				}
+			}
+			if podHostIP == currentNodeIP {
+				_ip, _ := linux.IP2Linux(pod.Status.PodIP)
+				err := m.Update(_ip, uint32(0), ebpf.UpdateAny)
+				if err != nil {
+					fmt.Printf("update process ip %s error: %v", pod.Status.PodIP, err)
+				}
 			}
 		}
 	}
+
 	updateFunc := func(old, new interface{}) {
 		addFunc(new)
 	}

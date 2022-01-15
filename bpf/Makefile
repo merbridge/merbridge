@@ -14,7 +14,7 @@ init-cgroup:
 compile: $(TARGETS)
 
 compile-clean:
-	sudo rm -f $(TARGETS)
+	[ -f mb_connect.c ] && sudo rm -f $(TARGETS)
 
 # Map
 load-map-cookie_original_dst:
