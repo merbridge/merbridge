@@ -2,12 +2,10 @@
 
 Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.
 
-## TODOs
+## Uages
 
-- [X] A better project name.
-- [X] Watch Pod ip list, and set to `local_pod_ips` map.
-  - [X] Check pod is belong to current node, need concert Kind env.
-- [ ] Docs.
-- [X] Build.
-- [ ] CI/CD.
-- [ ] Demo.
+You just only need to apply the following command to your Istio cluster to get eBPF to speed up Istio:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one.yaml
+```
