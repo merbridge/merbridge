@@ -43,14 +43,13 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
 	void * dst = bpf_map_lookup_elem(&cookie_original_dst, &cookie);
 	if (dst) {
 		struct origin_info dd = *(struct origin_info*)dst;
-		printk("sockops trace: %d, %d -> %d", dd.re_dport, skops->local_ip4, skops->remote_ip4);
 		if ((bpf_htons(dd.re_dport) == ISTIO_IN_PORT && skops->local_ip4 == skops->remote_ip4) || skops->local_ip4 == 100663423) {
 			// the is an incorrrct connection,
 			// envoy want to call self container port,
 			// but we send it to wrong port(15006).
 			// we should reject this connection.
 			// and alse update process_ip table.
-			printk("incorrect connection");
+			printk("incorrect connection: cookie=%d", cookie);
 			__u32 pid = dd.pid;
 			__u32 ip = skops->remote_ip4;
 			bpf_map_update_elem(&process_ip, &pid, &ip, BPF_ANY);
@@ -67,14 +66,8 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
 		struct pair pp = p;
 		if (!p.dport)
 			p.dport = dd.re_dport;
-		// printk("store socks redirect from ip %d -> %d", pp.sip, pp.dip);
-		// printk("store socks redirect from port %d -> %d", pp.sport, pp.dport);
-		long ret = bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
-		// printk("update pair: %d -> %d", p.sip, p.dip);
-		// printk("update pair port: %d -> %d", p.sport, p.dport);
-		// printk("update pair origin: %d:%d", dd.ip, dd.port);
-		ret = bpf_sock_hash_update(skops, &sock_pair_map, &pp, BPF_NOEXIST);
-		// printk("update sockhash res: %d", ret);
+		bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
+		bpf_sock_hash_update(skops, &sock_pair_map, &pp, BPF_NOEXIST);
 	} 
 	return 1;
 }
