@@ -5,3 +5,13 @@ clean:
 	make -C bpf clean
 compile:
 	make -C bpf compile
+
+lint-c:
+	clang-format --Werror -n bpf/*.c bpf/headers/*.h
+
+format-c:
+	find . -regex '.*\.\(c\|h\)' -exec clang-format -style=file -i {} \;
+
+lint: lint-c
+
+format: format-c

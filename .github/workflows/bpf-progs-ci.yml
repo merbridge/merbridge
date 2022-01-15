@@ -7,15 +7,24 @@ on:
     branches: [ main, test ]
 
 jobs:
+  style-check:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install clang-format
+      run: sudo apt update && sudo apt install -y clang-format
+    - name: C code check
+      run: make lint
   compile-ebpf-test:
     runs-on: ubuntu-20.04
-
+    needs: [style-check]
     steps:
     - uses: actions/checkout@v2
     - name: make
       run: make compile
   docker-build:
     runs-on: ubuntu-latest
+    needs: [compile-ebpf-test]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
