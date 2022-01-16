@@ -34,82 +34,82 @@ struct bpf_map __section("maps") process_ip = {
 static __u32 outip = 1;
 
 __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
-  // init
-  if (ctx->protocol != IPPROTO_TCP) {
-    return 1;
-  }
-  // __u64 ptg = bpf_get_current_pid_tgid() & 0xffffffff;
-  __u32 pid = bpf_get_current_pid_tgid() & 0xffffffff;
-  __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
-  // printk("cookie: %d, connect to: ip: %x  port: %d", cookie,
-  // bpf_htonl(ctx->user_ip4), bpf_htons(ctx->user_port));
-
-  if (is_port_listen_current_ns(ctx, ISTIO_OUT_PORT)) {
-    if (uid != 1337) { // todo changeme
-      if (bpf_htonl(ctx->user_ip4) >> 24 == 0x7f) {
+    // init
+    if (ctx->protocol != IPPROTO_TCP) {
         return 1;
-      }
-      // app -> others
-      // we need redirect it to envoy.
-      printk("connect app -> others: %x %d", bpf_htonl(ctx->user_ip4),
-             bpf_htons(ctx->user_port));
-      __u64 cookie = bpf_get_socket_cookie_addr(ctx);
-      printk("updated cookie %d with %d:%d", cookie, ctx->user_ip4,
-             ctx->user_port);
-      struct origin_info origin;
-      origin.ip = ctx->user_ip4;
-      origin.port = ctx->user_port;
-      origin.pid = pid;
-      origin.re_dport = bpf_htons(ISTIO_OUT_PORT);
-      if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
-                              BPF_ANY)) {
-        // printk("write cookie_original_dst failed");
-        return 0;
-      }
-      ctx->user_ip4 = bpf_htonl(0x7f800000 | (outip++));
-      if (outip >> 20) {
-        outip = 1;
-      }
-      ctx->user_port = bpf_htons(ISTIO_OUT_PORT);
-    } else {
-      // from envoy to others
-      printk("call from envoy");
-      __u32 ip = ctx->user_ip4;
-      if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
-        // dst ip is not in this node, bypass
-        printk("dst ip is not in this node: %d", ip);
-        return 1;
-      }
-      // dst ip is in this node, but not the current pod,
-      // it is envoy to envoy connecting.
-      printk("connect envoy -> other envoy: %d %d", ctx->user_ip4,
-             ctx->user_port);
-      __u64 cookie = bpf_get_socket_cookie_addr(ctx);
-      struct origin_info origin;
-      origin.ip = ctx->user_ip4;
-      origin.port = ctx->user_port;
-      origin.pid = pid;
-      origin.re_dport = bpf_htons(ISTIO_IN_PORT);
-      if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
-                              BPF_NOEXIST)) {
-        printk("update cookie origin failed");
-        return 0;
-      }
-      void *curr_ip = bpf_map_lookup_elem(&process_ip, &pid);
-      if (!curr_ip || *(__u32 *)curr_ip != ctx->user_ip4) {
-        // try redirect to 15006
-        // but it may cause error if it is envoy call self pod,
-        // in this case, we can read src and dst ip in sockops,
-        // if src is equals dst, it means envoy call self pod,
-        // we should reject this traffic in sockops,
-        // envoy will create a new connection to self pod.
-        ctx->user_port = bpf_htons(ISTIO_IN_PORT);
-        printk("rewrite envoy to envoy port: pid: %d", pid);
-      }
     }
-  }
+    // __u64 ptg = bpf_get_current_pid_tgid() & 0xffffffff;
+    __u32 pid = bpf_get_current_pid_tgid() & 0xffffffff;
+    __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
+    // printk("cookie: %d, connect to: ip: %x  port: %d", cookie,
+    // bpf_htonl(ctx->user_ip4), bpf_htons(ctx->user_port));
 
-  return 1;
+    if (is_port_listen_current_ns(ctx, ISTIO_OUT_PORT)) {
+        if (uid != 1337) { // todo changeme
+            if (bpf_htonl(ctx->user_ip4) >> 24 == 0x7f) {
+                return 1;
+            }
+            // app -> others
+            // we need redirect it to envoy.
+            printk("connect app -> others: %x %d", bpf_htonl(ctx->user_ip4),
+                   bpf_htons(ctx->user_port));
+            __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+            printk("updated cookie %d with %d:%d", cookie, ctx->user_ip4,
+                   ctx->user_port);
+            struct origin_info origin;
+            origin.ip = ctx->user_ip4;
+            origin.port = ctx->user_port;
+            origin.pid = pid;
+            origin.re_dport = bpf_htons(ISTIO_OUT_PORT);
+            if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
+                                    BPF_ANY)) {
+                // printk("write cookie_original_dst failed");
+                return 0;
+            }
+            ctx->user_ip4 = bpf_htonl(0x7f800000 | (outip++));
+            if (outip >> 20) {
+                outip = 1;
+            }
+            ctx->user_port = bpf_htons(ISTIO_OUT_PORT);
+        } else {
+            // from envoy to others
+            printk("call from envoy");
+            __u32 ip = ctx->user_ip4;
+            if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
+                // dst ip is not in this node, bypass
+                printk("dst ip is not in this node: %d", ip);
+                return 1;
+            }
+            // dst ip is in this node, but not the current pod,
+            // it is envoy to envoy connecting.
+            printk("connect envoy -> other envoy: %d %d", ctx->user_ip4,
+                   ctx->user_port);
+            __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+            struct origin_info origin;
+            origin.ip = ctx->user_ip4;
+            origin.port = ctx->user_port;
+            origin.pid = pid;
+            origin.re_dport = bpf_htons(ISTIO_IN_PORT);
+            if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
+                                    BPF_NOEXIST)) {
+                printk("update cookie origin failed");
+                return 0;
+            }
+            void *curr_ip = bpf_map_lookup_elem(&process_ip, &pid);
+            if (!curr_ip || *(__u32 *)curr_ip != ctx->user_ip4) {
+                // try redirect to 15006
+                // but it may cause error if it is envoy call self pod,
+                // in this case, we can read src and dst ip in sockops,
+                // if src is equals dst, it means envoy call self pod,
+                // we should reject this traffic in sockops,
+                // envoy will create a new connection to self pod.
+                ctx->user_port = bpf_htons(ISTIO_IN_PORT);
+                printk("rewrite envoy to envoy port: pid: %d", pid);
+            }
+        }
+    }
+
+    return 1;
 }
 
 char ____license[] __section("license") = "GPL";

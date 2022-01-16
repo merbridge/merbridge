@@ -12,17 +12,17 @@ struct bpf_map __section("maps") sock_pair_map = {
 };
 
 __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg) {
-  struct pair p = {
-      .sip = msg->local_ip4,
-      .sport = msg->local_port,
-      .dip = msg->remote_ip4,
-      .dport = msg->remote_port,
-  };
-  long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
-  if (res == 1) {
-    printk("success redir msg.");
-  }
-  return 1;
+    struct pair p = {
+        .sip = msg->local_ip4,
+        .sport = msg->local_port,
+        .dip = msg->remote_ip4,
+        .dport = msg->remote_port,
+    };
+    long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
+    if (res == 1) {
+        printk("success redir msg.");
+    }
+    return 1;
 }
 
 char ____license[] __section("license") = "GPL";

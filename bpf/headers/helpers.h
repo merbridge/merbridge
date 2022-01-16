@@ -18,11 +18,11 @@
 #endif
 
 struct bpf_map {
-  __u32 type;
-  __u32 key_size;
-  __u32 value_size;
-  __u32 max_entries;
-  __u32 map_flags;
+    __u32 type;
+    __u32 key_size;
+    __u32 value_size;
+    __u32 max_entries;
+    __u32 map_flags;
 };
 
 static __u64 (*bpf_get_current_pid_tgid)() = (void *)
@@ -57,39 +57,39 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
 
 #ifndef printk
 #define printk(fmt, ...)                                                       \
-  ({                                                                           \
-    char ____fmt[] = fmt;                                                      \
-    bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);                 \
-  })
+    ({                                                                         \
+        char ____fmt[] = fmt;                                                  \
+        bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);             \
+    })
 #endif
 
 static inline int is_port_listen_current_ns(void *ctx, __u16 port) {
 
-  struct bpf_sock_tuple tuple = {};
-  // memset(&tuple.ipv4.sport, 0, sizeof(tuple.ipv4.sport));
-  // tuple.ipv4.saddr = 0;
-  // tuple.ipv4.sport = 0;
-  // tuple.ipv4.daddr = 0;
-  tuple.ipv4.dport = bpf_htons(port);
-  struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
-                                         BPF_F_CURRENT_NETNS, 0);
-  if (s) {
-    bpf_sk_release(s);
-    return 1;
-  }
-  return 0;
+    struct bpf_sock_tuple tuple = {};
+    // memset(&tuple.ipv4.sport, 0, sizeof(tuple.ipv4.sport));
+    // tuple.ipv4.saddr = 0;
+    // tuple.ipv4.sport = 0;
+    // tuple.ipv4.daddr = 0;
+    tuple.ipv4.dport = bpf_htons(port);
+    struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
+                                           BPF_F_CURRENT_NETNS, 0);
+    if (s) {
+        bpf_sk_release(s);
+        return 1;
+    }
+    return 0;
 }
 
 struct origin_info {
-  __u32 pid;
-  __u32 ip;
-  __u16 port;
-  __u16 re_dport;
+    __u32 pid;
+    __u32 ip;
+    __u16 port;
+    __u16 re_dport;
 };
 
 struct pair {
-  __u32 sip;
-  __u32 dip;
-  __u16 sport;
-  __u16 dport;
+    __u32 sip;
+    __u32 dip;
+    __u16 sport;
+    __u16 dport;
 };
