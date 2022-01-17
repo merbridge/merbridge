@@ -9,3 +9,5 @@ You just only need to run the following command to your Istio cluster to get eBP
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one.yaml
 ```
+
+> Note: currently only works on Linux kernel >= 5.15, run `uname -r` check your kernel version before install merbridge.
