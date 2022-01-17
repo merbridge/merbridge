@@ -19,8 +19,9 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx) {
     // bpf_get_current_comm(comm, sizeof(comm));
     // __u64 ptg = bpf_get_current_pid_tgid();
     if (ctx->optlen > MAX_OPS_BUFF_LENGTH) {
-        printk("optname: %d, unexpected optlen %d, reset to %d", ctx->optname,
-               ctx->optlen, MAX_OPS_BUFF_LENGTH);
+        // printk("optname: %d, unexpected optlen %d, reset to %d",
+        // ctx->optname,
+        //        ctx->optlen, MAX_OPS_BUFF_LENGTH);
         ctx->optlen = MAX_OPS_BUFF_LENGTH;
     }
     if (ctx->optname == SO_ORIGINAL_DST) {
@@ -32,9 +33,9 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx) {
         struct origin_info *origin;
         origin = bpf_map_lookup_elem(&pair_original_dst, &p);
         if (!origin) {
-            printk("get sockopt1 origin error: %d -> %d", p.sip, p.dip);
-            printk("get sockopt1 origin port error: %d -> %d", p.sport,
-                   p.dport);
+            // printk("get sockopt1 origin error: %d -> %d", p.sip, p.dip);
+            // printk("get sockopt1 origin port error: %d -> %d", p.sport,
+            //        p.dport);
             p.dip = ctx->sk->src_ip4;
             p.dport = bpf_htons(ctx->sk->src_port);
             p.sip = ctx->sk->dst_ip4;
@@ -56,9 +57,9 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx) {
             sa.sin_port = origin->port;
             *(struct sockaddr_in *)ctx->optval = sa;
         } else {
-            printk("get sockopt2 origin error: %d -> %d", p.sip, p.dip);
-            printk("get sockopt2 origin port error: %d -> %d", p.sport,
-                   p.dport);
+            // printk("get sockopt2 origin error: %d -> %d", p.sip, p.dip);
+            // printk("get sockopt2 origin port error: %d -> %d", p.sport,
+            //        p.dport);
         }
     }
     return 1;

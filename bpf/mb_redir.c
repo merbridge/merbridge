@@ -19,9 +19,9 @@ __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg) {
         .dport = msg->remote_port,
     };
     long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
-    if (res == 1) {
-        printk("success redir msg.");
-    }
+    // if (res == 1) {
+    //     printk("success redir msg.");
+    // }
     return 1;
 }
 

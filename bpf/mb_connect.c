@@ -51,11 +51,11 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
             }
             // app -> others
             // we need redirect it to envoy.
-            printk("connect app -> others: %x %d", bpf_htonl(ctx->user_ip4),
-                   bpf_htons(ctx->user_port));
+            // printk("connect app -> others: %x %d", bpf_htonl(ctx->user_ip4),
+            //        bpf_htons(ctx->user_port));
             __u64 cookie = bpf_get_socket_cookie_addr(ctx);
-            printk("updated cookie %d with %d:%d", cookie, ctx->user_ip4,
-                   ctx->user_port);
+            // printk("updated cookie %d with %d:%d", cookie, ctx->user_ip4,
+            //        ctx->user_port);
             struct origin_info origin;
             origin.ip = ctx->user_ip4;
             origin.port = ctx->user_port;
@@ -73,17 +73,17 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
             ctx->user_port = bpf_htons(ISTIO_OUT_PORT);
         } else {
             // from envoy to others
-            printk("call from envoy");
+            // printk("call from envoy");
             __u32 ip = ctx->user_ip4;
             if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
                 // dst ip is not in this node, bypass
-                printk("dst ip is not in this node: %d", ip);
+                // printk("dst ip is not in this node: %d", ip);
                 return 1;
             }
             // dst ip is in this node, but not the current pod,
             // it is envoy to envoy connecting.
-            printk("connect envoy -> other envoy: %d %d", ctx->user_ip4,
-                   ctx->user_port);
+            // printk("connect envoy -> other envoy: %d %d", ctx->user_ip4,
+            //        ctx->user_port);
             __u64 cookie = bpf_get_socket_cookie_addr(ctx);
             struct origin_info origin;
             origin.ip = ctx->user_ip4;
@@ -92,7 +92,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
             origin.re_dport = bpf_htons(ISTIO_IN_PORT);
             if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                     BPF_NOEXIST)) {
-                printk("update cookie origin failed");
+                // printk("update cookie origin failed");
                 return 0;
             }
             void *curr_ip = bpf_map_lookup_elem(&process_ip, &pid);
@@ -104,7 +104,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
                 // we should reject this traffic in sockops,
                 // envoy will create a new connection to self pod.
                 ctx->user_port = bpf_htons(ISTIO_IN_PORT);
-                printk("rewrite envoy to envoy port: pid: %d", pid);
+                // printk("rewrite envoy to envoy port: pid: %d", pid);
             }
         }
     }
