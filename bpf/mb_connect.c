@@ -46,7 +46,8 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
 
     if (is_port_listen_current_ns(ctx, ISTIO_OUT_PORT)) {
         if (uid != 1337) { // todo changeme
-            if (bpf_htonl(ctx->user_ip4) >> 24 == 0x7f) {
+            if ((ctx->user_ip4 & 0xff) == 0x7f) {
+                // app call local, bypass.
                 return 1;
             }
             // app -> others
@@ -77,7 +78,6 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
             __u32 ip = ctx->user_ip4;
             if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
                 // dst ip is not in this node, bypass
-                // printk("dst ip is not in this node: %d", ip);
                 return 1;
             }
             // dst ip is in this node, but not the current pod,
