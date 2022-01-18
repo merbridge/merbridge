@@ -7,11 +7,12 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/merbridge/merbridge/internal/ebpfs"
 	"github.com/merbridge/merbridge/internal/pods"
 	"github.com/merbridge/merbridge/pkg/kube"
 	"github.com/merbridge/merbridge/pkg/linux"
-	v1 "k8s.io/api/core/v1"
 )
 
 var currentNodeIP string // for cache
@@ -63,14 +64,14 @@ func main() {
 		if pod, ok := obj.(*v1.Pod); ok {
 			fmt.Printf("got pod delete %s/%s\n", pod.Namespace, pod.Name)
 			_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-			m.Delete(_ip)
+			_ = m.Delete(_ip)
 		}
 	}
 	w := pods.NewWatcher(cli, locaName, addFunc, updateFunc, deleteFunc)
-	w.Start()
+	_ = w.Start()
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	<-ch
 	w.Stop()
-	ebpfs.UnLoadMBProgs()
+	_ = ebpfs.UnLoadMBProgs()
 }

@@ -13,9 +13,9 @@ func LoadMBProgs() error {
 	cmd := exec.Command("make", "load")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Run()
-	if code := cmd.ProcessState.ExitCode(); code != 0 {
-		return fmt.Errorf("unexpected exit code: %d", code)
+	err := cmd.Run()
+	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+		return fmt.Errorf("unexpected exit code: %d, err: %v", code, err)
 	}
 	return nil
 }
@@ -24,9 +24,9 @@ func UnLoadMBProgs() error {
 	cmd := exec.Command("make", "clean")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Run()
-	if code := cmd.ProcessState.ExitCode(); code != 0 {
-		return fmt.Errorf("unexpected exit code: %d", code)
+	err := cmd.Run()
+	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+		return fmt.Errorf("unload unexpected exit code: %d, err: %v", code, err)
 	}
 	return nil
 }
