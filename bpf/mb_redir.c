@@ -11,7 +11,8 @@ struct bpf_map __section("maps") sock_pair_map = {
     .map_flags = 0,
 };
 
-__section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg) {
+__section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
+{
     struct pair p = {
         .sip = msg->local_ip4,
         .sport = msg->local_port,

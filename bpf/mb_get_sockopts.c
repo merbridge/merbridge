@@ -13,7 +13,8 @@ struct bpf_map __section("maps") pair_original_dst = {
     .map_flags = 0,
 };
 
-__section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx) {
+__section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
+{
     // char comm[80];
     // __u64 ptg = bpf_get_current_pid_tgid();
     // bpf_get_current_comm(comm, sizeof(comm));

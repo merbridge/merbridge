@@ -10,7 +10,7 @@
 #define bpf_htons(x) (x)
 #define bpf_htonl(x) (x)
 #else
-#error "Fix your compiler's __BYTE_ORDER__?!"
+#error "__BYTE_ORDER__ error"
 #endif
 
 #ifndef __section
@@ -63,7 +63,8 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
     })
 #endif
 
-static inline int is_port_listen_current_ns(void *ctx, __u16 port) {
+static inline int is_port_listen_current_ns(void *ctx, __u16 port)
+{
 
     struct bpf_sock_tuple tuple = {};
     // memset(&tuple.ipv4.sport, 0, sizeof(tuple.ipv4.sport));

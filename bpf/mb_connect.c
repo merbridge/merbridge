@@ -33,7 +33,8 @@ struct bpf_map __section("maps") process_ip = {
 
 static __u32 outip = 1;
 
-__section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx) {
+__section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
+{
     // init
     if (ctx->protocol != IPPROTO_TCP) {
         return 1;
