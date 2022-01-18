@@ -12,6 +12,12 @@ lint-c:
 format-c:
 	find . -regex '.*\.\(c\|h\)' -exec clang-format -style=file -i {} \;
 
-lint: lint-c
+lint-go:
+	golangci-lint run
 
-format: format-c
+format-go:
+	goimports -w -local github.com/merbridge/merbridge/ .
+
+lint: lint-c lint-go
+
+format: format-c format-go
