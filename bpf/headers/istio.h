@@ -6,6 +6,10 @@
 #define ISTIO_IN_PORT 15006
 #endif
 
+#ifndef ISTIO_SIDECAR_USER_ID
+#define ISTIO_SIDECAR_USER_ID 1337
+#endif
+
 #ifndef ISTIO_PROXY_PROCESS_NAME
 #define ISTIO_PROXY_PROCESS_NAME "envoy"
 #endif

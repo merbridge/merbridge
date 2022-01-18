@@ -15,28 +15,23 @@ struct bpf_map __section("maps") pair_original_dst = {
 
 __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
 {
-    // char comm[80];
-    // __u64 ptg = bpf_get_current_pid_tgid();
-    // bpf_get_current_comm(comm, sizeof(comm));
-    // __u64 ptg = bpf_get_current_pid_tgid();
+    // currently, eBPF can not deal with optlen more than 4096 bytes, so, we
+    // should limit this.
     if (ctx->optlen > MAX_OPS_BUFF_LENGTH) {
-        // printk("optname: %d, unexpected optlen %d, reset to %d",
-        // ctx->optname,
-        //        ctx->optlen, MAX_OPS_BUFF_LENGTH);
         ctx->optlen = MAX_OPS_BUFF_LENGTH;
     }
+    // envoy will call getsockopt with SO_ORIGINAL_DST, we should rewrite it to
+    // return original dst info.
     if (ctx->optname == SO_ORIGINAL_DST) {
-        struct pair p;
-        p.sip = ctx->sk->src_ip4;
-        p.sport = bpf_htons(ctx->sk->src_port);
-        p.dip = ctx->sk->dst_ip4;
-        p.dport = bpf_htons(ctx->sk->dst_port);
+        struct pair p = {
+            .sip = ctx->sk->src_ip4,
+            .sport = bpf_htons(ctx->sk->src_port),
+            .dip = ctx->sk->dst_ip4,
+            .dport = bpf_htons(ctx->sk->dst_port),
+        };
         struct origin_info *origin;
         origin = bpf_map_lookup_elem(&pair_original_dst, &p);
         if (!origin) {
-            // printk("get sockopt1 origin error: %d -> %d", p.sip, p.dip);
-            // printk("get sockopt1 origin port error: %d -> %d", p.sport,
-            //        p.dport);
             p.dip = ctx->sk->src_ip4;
             p.dport = bpf_htons(ctx->sk->src_port);
             p.sip = ctx->sk->dst_ip4;
@@ -44,7 +39,6 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             origin = bpf_map_lookup_elem(&pair_original_dst, &p);
         }
         if (origin) {
-            printk("get sockopt origin: %d:%d", origin->ip, origin->port);
             // rewrite original_dst
             ctx->optlen = (__s32)sizeof(struct sockaddr_in);
             if ((void *)((struct sockaddr_in *)ctx->optval + 1) >
@@ -57,10 +51,6 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             sa.sin_addr.s_addr = origin->ip;
             sa.sin_port = origin->port;
             *(struct sockaddr_in *)ctx->optval = sa;
-        } else {
-            // printk("get sockopt2 origin error: %d -> %d", p.sip, p.dip);
-            // printk("get sockopt2 origin port error: %d -> %d", p.sport,
-            //        p.dport);
         }
     }
     return 1;
