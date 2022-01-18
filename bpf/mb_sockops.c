@@ -66,7 +66,7 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
             .dport = skops->remote_port,
         };
         struct pair pp = p;
-        if (!p.dport)
+        if (!p.dport) // skops->remote_port may be 0
             p.dport = dd.re_dport;
         bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
         bpf_sock_hash_update(skops, &sock_pair_map, &pp, BPF_NOEXIST);
@@ -83,7 +83,8 @@ __section("sockops") int mb_sockops(struct bpf_sock_ops *skops)
     switch (op) {
     // case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
     case BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB:
-        if (family == 2) { // AFI_NET
+        if (family == 2) { // AFI_NET, we dont include socket.h, because it may
+                           // cause an import error.
             if (sockops_ipv4(skops))
                 return 1;
             else
