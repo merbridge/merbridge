@@ -24,13 +24,13 @@ load-map-local_pod_ips:
 	[ -f $(CGROUP_PATH)/local_pod_ips ] || sudo bpftool map create $(CGROUP_PATH)/local_pod_ips type hash key 4 value 4 entries 1024 name local_pod_ips
 
 load-map-process_ip:
-	[ -f $(CGROUP_PATH)/process_ip ] || sudo bpftool map create $(CGROUP_PATH)/process_ip type hash key 4 value 4 entries 1024 name process_ip
+	[ -f $(CGROUP_PATH)/process_ip ] || sudo bpftool map create $(CGROUP_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
 
 load-map-pair_original_dst:
-	[ -f $(CGROUP_PATH)/pair_original_dst ] || sudo bpftool map create $(CGROUP_PATH)/pair_original_dst type lru_hash key 12 value 12 entries 1024 name pair_original_dst
+	[ -f $(CGROUP_PATH)/pair_original_dst ] || sudo bpftool map create $(CGROUP_PATH)/pair_original_dst type lru_hash key 12 value 12 entries 65535 name pair_original_dst
 
 load-map-sock_pair_map:
-	[ -f $(CGROUP_PATH)/sock_pair_map ] || sudo bpftool map create $(CGROUP_PATH)/sock_pair_map type sockhash key 12 value 4 entries 1024 name sock_pair_map
+	[ -f $(CGROUP_PATH)/sock_pair_map ] || sudo bpftool map create $(CGROUP_PATH)/sock_pair_map type sockhash key 12 value 4 entries 65535 name sock_pair_map
 
 
 clean-maps:
