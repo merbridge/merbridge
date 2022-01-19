@@ -9,11 +9,17 @@ jobs:
   style-check:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2      
+    - name: golangci-lint
+      if: github.event_name == 'pull_request'
+      uses: golangci/golangci-lint-action@v2
+      with:
+        # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
+        version: v1.29
     - name: install clang-format
       run: sudo apt update && sudo apt install -y clang-format
-    - name: C code check
-      run: make lint
+    - name: Code check
+      run: make lint-c
   compile-ebpf-test:
     runs-on: ubuntu-20.04
     needs: [style-check]
