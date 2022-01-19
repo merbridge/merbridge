@@ -13,10 +13,10 @@ struct bpf_map __section("maps") cookie_original_dst = {
 
 // process_ip stores envoy's ip address.
 struct bpf_map __section("maps") process_ip = {
-    .type = BPF_MAP_TYPE_HASH,
+    .type = BPF_MAP_TYPE_LRU_HASH,
     .key_size = sizeof(__u32),
     .value_size = sizeof(__u32),
-    .max_entries = 65535,
+    .max_entries = 1024,
     .map_flags = 0,
 };
 
