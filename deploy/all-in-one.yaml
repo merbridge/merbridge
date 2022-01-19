@@ -19,6 +19,12 @@ spec:
       - image: merbridge/merbridge:latest
         imagePullPolicy: Always
         name: merbridge
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - make
+              - clean
         resources: 
           requests:
             cpu: 100m
