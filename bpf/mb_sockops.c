@@ -43,9 +43,8 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
     void *dst = bpf_map_lookup_elem(&cookie_original_dst, &cookie);
     if (dst) {
         struct origin_info dd = *(struct origin_info *)dst;
-        if ((bpf_htons(dd.re_dport) == ISTIO_IN_PORT &&
-             skops->local_ip4 == skops->remote_ip4) &&
-            skops->local_ip4 != 100663423) {
+        if (bpf_htons(dd.re_dport) == ISTIO_IN_PORT &&
+            skops->local_ip4 == 100663423) {
             // the is an incorrrct connection,
             // envoy want to call self container port,
             // but we send it to wrong port(15006).
