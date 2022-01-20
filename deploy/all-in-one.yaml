@@ -1,3 +1,41 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: merbridge
+  name: merbridge
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: merbridge
+  name: merbridge
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: merbridge
+subjects:
+- kind: ServiceAccount
+  name: merbridge
+  namespace: istio-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: merbridge
+  name: merbridge
+  namespace: istio-system
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -53,41 +91,3 @@ spec:
       - hostPath:
           path: /sys/fs
         name: sys-fs
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    app: merbridge
-  name: merbridge
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - list
-  - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  labels:
-    app: merbridge
-  name: merbridge
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: merbridge
-subjects:
-- kind: ServiceAccount
-  name: merbridge
-  namespace: istio-system
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  labels:
-    app: merbridge
-  name: merbridge
-  namespace: istio-system
