@@ -1,9 +1,7 @@
 name: Release
-
+# Workflow will only be triggered by creating tags or branches
 on:
-  push:
-    tags:
-    - '*'
+  create
 
 jobs:
   style-check:
@@ -44,6 +42,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Extract Tags name
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        id: tag_env
+        shell: bash
+        run: |
+          echo "##[set-output name=version;]$(echo ${GITHUB_REF##*/})"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -59,6 +63,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: merbridge/merbridge:${{github.ref_name}}
+          tags: merbridge/merbridge:${{ steps.tag_env.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
