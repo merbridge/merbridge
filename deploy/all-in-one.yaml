@@ -53,11 +53,6 @@ spec:
       - hostPath:
           path: /sys/fs
         name: sys-fs
-  updateStrategy:
-    rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
-    type: RollingUpdate
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
