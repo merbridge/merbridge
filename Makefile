@@ -17,6 +17,7 @@ lint-go:
 
 format-go:
 	goimports -w -local github.com/merbridge/merbridge/ .
+	gofmt -l -d -w .
 
 lint: lint-c lint-go
 
