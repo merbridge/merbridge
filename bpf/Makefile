@@ -3,13 +3,23 @@ CC=clang
 CFLAGS=-O2 -g  -Wall -target bpf -I/usr/include/$(shell uname -m)-linux-gnu
 CGROUP_PATH=/sys/fs/bpf
 
+MESH_MODE ?= istio
+
+ifeq ($(MESH_MODE),istio)
+    MESH ?= 1
+else ifeq ($(MESH_MODE),linkerd)
+    MESH ?= 2
+else
+    $(error MESH_MODE $(LOCAL_ARCH) isn't supported)
+endif
+
 TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o
 
 init-cgroup:
 	[ -d $(CGROUP_PATH)/ ] || sudo mount -t bpf bpf $(CGROUP_PATH)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -DMESH=$(MESH) -c $< -o $@
 
 compile: $(TARGETS)
 

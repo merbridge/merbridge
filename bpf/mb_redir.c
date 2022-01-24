@@ -1,5 +1,4 @@
 #include "headers/helpers.h"
-#include "headers/istio.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
 
@@ -19,10 +18,7 @@ __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
         .dip = msg->remote_ip4,
         .dport = msg->remote_port,
     };
-    long res = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
-    // if (res == 1) {
-    //     printk("success redir msg.");
-    // }
+    bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
     return 1;
 }
 

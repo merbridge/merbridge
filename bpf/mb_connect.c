@@ -1,5 +1,5 @@
 #include "headers/helpers.h"
-#include "headers/istio.h"
+#include "headers/mesh.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
 
@@ -46,12 +46,12 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
     // bpf_htonl(ctx->user_ip4), bpf_htons(ctx->user_port));
 
     // todo(kebe7jun) more reliable way to verify,
-    if (!is_port_listen_current_ns(ctx, ISTIO_OUT_PORT)) {
+    if (!is_port_listen_current_ns(ctx, OUT_REDIRECT_PORT)) {
         // bypass normal traffic.
         // we only deal pod's traffic managed by istio.
         return 1;
     }
-    if (uid != ISTIO_SIDECAR_USER_ID) {
+    if (uid != SIDECAR_USER_ID) {
         if ((ctx->user_ip4 & 0xff) == 0x7f) {
             // app call local, bypass.
             return 1;
@@ -63,7 +63,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
             .ip = ctx->user_ip4,
             .port = ctx->user_port,
             .pid = pid,
-            .re_dport = bpf_htons(ISTIO_OUT_PORT),
+            .re_dport = bpf_htons(OUT_REDIRECT_PORT),
         };
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_ANY)) {
@@ -78,7 +78,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         if (outip >> 20) {
             outip = 1;
         }
-        ctx->user_port = bpf_htons(ISTIO_OUT_PORT);
+        ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
         // from envoy to others
         __u32 ip = ctx->user_ip4;
@@ -98,7 +98,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         if (curr_ip) {
             // envoy to other envoy
             if (*(__u32 *)curr_ip != ctx->user_ip4) {
-                ctx->user_port = bpf_htons(ISTIO_IN_PORT);
+                ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
                 // printk("enovy to other");
             }
             // printk("envoy to local");
@@ -111,7 +111,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
             // if src is equals dst, it means envoy call self pod,
             // we should reject this traffic in sockops,
             // envoy will create a new connection to self pod.
-            ctx->user_port = bpf_htons(ISTIO_IN_PORT);
+            ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
         }
         origin.re_dport = ctx->user_port;
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
