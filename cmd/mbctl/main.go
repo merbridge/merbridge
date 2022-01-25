@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -18,7 +19,16 @@ import (
 var currentNodeIP string // for cache
 
 func main() {
-	if err := ebpfs.LoadMBProgs(); err != nil {
+	mode := ""
+	debug := false
+	flag.StringVar(&mode, "m", "istio", "Service mesh mode, current support istio and linkerd")
+	flag.BoolVar(&debug, "d", false, "Debug mode")
+	flag.Parse()
+	if mode != "istio" && mode != "linkerd" {
+		fmt.Printf("unsupport mode %q, current support istio and linkerd\n", mode)
+		os.Exit(1)
+	}
+	if err := ebpfs.LoadMBProgs(mode, debug); err != nil {
 		panic(err)
 	}
 	m, err := ebpf.LoadPinnedMap("/sys/fs/bpf/local_pod_ips", &ebpf.LoadPinOptions{})
@@ -47,13 +57,13 @@ func main() {
 					currentNodeIP = podHostIP
 				}
 			}
-			if podHostIP == currentNodeIP {
-				_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-				err := m.Update(_ip, uint32(0), ebpf.UpdateAny)
-				if err != nil {
-					fmt.Printf("update process ip %s error: %v", pod.Status.PodIP, err)
-				}
+			// if podHostIP == currentNodeIP {
+			_ip, _ := linux.IP2Linux(pod.Status.PodIP)
+			err := m.Update(_ip, uint32(0), ebpf.UpdateAny)
+			if err != nil {
+				fmt.Printf("update process ip %s error: %v", pod.Status.PodIP, err)
 			}
+			// }
 		}
 	}
 
