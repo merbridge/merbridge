@@ -3,23 +3,30 @@ CC=clang
 CFLAGS=-O2 -g  -Wall -target bpf -I/usr/include/$(shell uname -m)-linux-gnu
 CGROUP_PATH=/sys/fs/bpf
 
+MACROS:=
+DEBUG ?= 
+
 MESH_MODE ?= istio
 
 ifeq ($(MESH_MODE),istio)
-    MESH ?= 1
+    MACROS:= $(MACROS) -DMESH=1
 else ifeq ($(MESH_MODE),linkerd)
-    MESH ?= 2
+    MACROS:= $(MACROS) -DMESH=2
 else
     $(error MESH_MODE $(LOCAL_ARCH) isn't supported)
 endif
 
-TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o
+ifeq ($(DEBUG),1)
+    MACROS:= $(MACROS) -DDEBUG
+endif
+
+TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o
 
 init-cgroup:
 	[ -d $(CGROUP_PATH)/ ] || sudo mount -t bpf bpf $(CGROUP_PATH)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -DMESH=$(MESH) -c $< -o $@
+	$(CC) $(CFLAGS) $(MACROS) -c $< -o $@
 
 compile: $(TARGETS)
 
@@ -92,8 +99,16 @@ clean-sockops:
 	sudo bpftool cgroup detach /sys/fs/cgroup/unified/ sock_ops pinned $(CGROUP_PATH)/sockops
 	sudo rm -rf $(CGROUP_PATH)/sockops
 
+load-bind:
+	sudo bpftool prog load mb_bind.o $(CGROUP_PATH)/bind
+	sudo bpftool cgroup attach /sys/fs/cgroup/unified/ bind4 pinned $(CGROUP_PATH)/bind
+
+clean-bind:
+	sudo bpftool cgroup detach /sys/fs/cgroup/unified/ bind4 pinned $(CGROUP_PATH)/bind
+	sudo rm -rf $(CGROUP_PATH)/bind
+
 load: compile load-from-obj
 
-load-from-obj: load-connect load-sockops load-getsock load-redir
+load-from-obj: load-connect load-sockops load-getsock load-redir load-bind
 
-clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean
+clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind

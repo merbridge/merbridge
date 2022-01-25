@@ -39,11 +39,8 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
     if (ctx->protocol != IPPROTO_TCP) {
         return 1;
     }
-    // __u64 ptg = bpf_get_current_pid_tgid() & 0xffffffff;
     __u32 pid = bpf_get_current_pid_tgid() & 0xffffffff;
     __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    // printk("cookie: %d, connect to: ip: %x  port: %d", cookie,
-    // bpf_htonl(ctx->user_ip4), bpf_htons(ctx->user_port));
 
     // todo(kebe7jun) more reliable way to verify,
     if (!is_port_listen_current_ns(ctx, OUT_REDIRECT_PORT)) {
@@ -57,6 +54,8 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
             return 1;
         }
         // app call others
+        printk("call from user container: ip: 0x%x, port: %d", ctx->user_ip4,
+               bpf_htons(ctx->user_port));
         // we need redirect it to envoy.
         __u64 cookie = bpf_get_socket_cookie_addr(ctx);
         struct origin_info origin = {
@@ -81,9 +80,12 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
         // from envoy to others
+        printk("call from user container: ip: 0x%x, port: %d", ctx->user_ip4,
+               bpf_htons(ctx->user_port));
         __u32 ip = ctx->user_ip4;
         if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
             // dst ip is not in this node, bypass
+            printk("dest ip: 0x%x not in this node, bypass", ctx->user_ip4);
             return 1;
         }
         // dst ip is in this node, but not the current pod,
