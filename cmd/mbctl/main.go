@@ -57,13 +57,13 @@ func main() {
 					currentNodeIP = podHostIP
 				}
 			}
-			// if podHostIP == currentNodeIP {
-			_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-			err := m.Update(_ip, uint32(0), ebpf.UpdateAny)
-			if err != nil {
-				fmt.Printf("update process ip %s error: %v", pod.Status.PodIP, err)
+			if podHostIP == currentNodeIP {
+				_ip, _ := linux.IP2Linux(pod.Status.PodIP)
+				err := m.Update(_ip, uint32(0), ebpf.UpdateAny)
+				if err != nil {
+					fmt.Printf("update process ip %s error: %v", pod.Status.PodIP, err)
+				}
 			}
-			// }
 		}
 	}
 
