@@ -39,10 +39,9 @@ FROM ubuntu:20.04
 
 WORKDIR /app
 
-RUN apt update && apt install -y libelf-dev make sudo
-
+RUN apt update && apt install -y libelf-dev make sudo clang
+ADD bpf bpf
 COPY --from=compiler /usr/local/sbin/bpftool /usr/local/sbin/bpftool
-COPY --from=compiler /app/bpf/*.o bpf/
 COPY --from=compiler /app/bpf/Makefile bpf/
 COPY --from=compiler /app/Makefile Makefile
 COPY --from=mbctl /app/dist/mbctl mbctl
