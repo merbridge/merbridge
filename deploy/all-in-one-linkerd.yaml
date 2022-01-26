@@ -26,7 +26,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: merbridge
-  namespace: istio-system
+  namespace: linkerd
 ---
 apiVersion: v1
 kind: ServiceAccount
