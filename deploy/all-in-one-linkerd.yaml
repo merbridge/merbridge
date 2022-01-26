@@ -34,7 +34,7 @@ metadata:
   labels:
     app: merbridge
   name: merbridge
-  namespace: istio-system
+  namespace: linkerd
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -42,7 +42,7 @@ metadata:
   labels:
     app: merbridge
   name: merbridge
-  namespace: istio-system
+  namespace: linkerd
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -60,7 +60,7 @@ spec:
         args:
         - /app/mbctl
         - -m
-        - istio
+        - linkerd
         lifecycle:
           preStop:
             exec:
