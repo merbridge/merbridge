@@ -40,8 +40,10 @@ func init() {
 
 var currentNodeIP string // for cache
 
-const modeIstio = "istio"
-const modeLinkerd = "linkerd"
+const (
+	modeIstio   = "istio"
+	modeLinkerd = "linkerd"
+)
 
 func main() {
 	mode := ""
@@ -55,7 +57,7 @@ func main() {
 		log.SetLevel(log.DebugLevel)
 	}
 	if mode != modeIstio && mode != modeLinkerd {
-		log.Errorf("invalid mode %q, current only support istio and linkerd")
+		log.Errorf("invalid mode %q, current only support istio and linkerd", mode)
 		os.Exit(1)
 	}
 	if err := ebpfs.LoadMBProgs(mode, debug); err != nil {
