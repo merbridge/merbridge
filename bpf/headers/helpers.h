@@ -55,12 +55,21 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
                                      void *key, __u64 flags) = (void *)
     BPF_FUNC_msg_redirect_hash;
 
-#ifndef DEBUG
-#define printk(fmt, ...) ({})
-#else
-// only print traceing in debug mode
 #ifndef printk
 #define printk(fmt, ...)                                                       \
+    ({                                                                         \
+        char ____fmt[] = fmt;                                                  \
+        bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);             \
+    })
+#endif
+
+#ifndef DEBUG
+// do nothing
+#define debugf(fmt, ...) ({})
+#else
+// only print traceing in debug mode
+#ifndef debugf
+#define debugf(fmt, ...)                                                       \
     ({                                                                         \
         char ____fmt[] = fmt;                                                  \
         bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);             \
