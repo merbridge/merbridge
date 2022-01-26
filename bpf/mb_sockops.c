@@ -51,7 +51,7 @@ int sockops_ipv4(struct bpf_sock_ops *skops)
             // but we send it to wrong port(15006).
             // we should reject this connection.
             // and alse update process_ip table.
-            printk("incorrect connection: cookie=%d", cookie);
+            debugf("incorrect connection: cookie=%d", cookie);
             __u32 pid = dd.pid;
             __u32 ip = skops->remote_ip4;
             bpf_map_update_elem(&process_ip, &pid, &ip, BPF_ANY);
