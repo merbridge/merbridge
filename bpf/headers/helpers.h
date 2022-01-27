@@ -1,3 +1,4 @@
+#pragma once
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/swab.h>
