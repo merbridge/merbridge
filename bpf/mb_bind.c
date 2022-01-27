@@ -3,12 +3,13 @@
 #include <linux/bpf.h>
 #include <linux/in.h>
 
-// this prog deal linkerd bind OUTPUT_LISTENER
+// this prog hook linkerd bind OUTPUT_LISTENER
 // which will makes the listen address change from 127.0.0.1:4140 to
 // 0.0.0.0:4140
 __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
 {
 #if MESH != LINKERD
+    // only works on linkerd
     return 1;
 #endif
 
@@ -16,9 +17,9 @@ __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
         ctx->user_port == bpf_htons(OUT_REDIRECT_PORT)) {
         __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
         if (uid == SIDECAR_USER_ID) {
-            // linkerd listen localhost, we have to change the bind to
+            // linkerd listen localhost, we have to change the bind address to
             // 0.0.0.0:4140
-            debugf("change bind address from 127.0.0.1:4140 to 0.0.0.0:4140");
+            printk("change bind address from 127.0.0.1:4140 to 0.0.0.0:4140");
             ctx->user_ip4 = 0;
         }
     }
