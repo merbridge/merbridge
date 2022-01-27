@@ -36,7 +36,7 @@ struct bpf_map __section("maps") sock_pair_map = {
     .map_flags = 0,
 };
 
-int sockops_ipv4(struct bpf_sock_ops *skops)
+static inline int sockops_ipv4(struct bpf_sock_ops *skops)
 {
     __u64 cookie = bpf_get_socket_cookie_ops(skops);
 
