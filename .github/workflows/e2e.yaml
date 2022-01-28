@@ -1,21 +1,17 @@
 name: E2E CI
 
 on:
-  push:
-    branches: [ main, test ]
-    paths-ignore:
-      - '.ci/**'
-      - 'docs/**'
-      - '**/*.md'
+  # push:
+  #   branches: [ main, test ]
   pull_request:
     branches: [ main, test ]
-    # types: [ labeled ]
+    types: [ labeled ]
 
 jobs:
   istio-e2e:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
-    # if: ${{ github.event.label.name == 'bug' }}
+    if: ${{ github.event.label.name == 'needs-e2e-test' }}
     env: 
       ISTIO_VERSION: '1.12.2'
       KIND_VERSION: v0.11.1
