@@ -115,6 +115,7 @@ func main() {
 	}
 	w := pods.NewWatcher(cli, locaName, addFunc, updateFunc, deleteFunc)
 	_ = w.Start()
+	log.Info("pod watcher ready")
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	<-ch

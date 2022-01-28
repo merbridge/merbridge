@@ -57,16 +57,17 @@ jobs:
         kubectl label ns default istio-injection=enabled
         kubectl apply -f istio-${ISTIO_VERSION}/samples/sleep/sleep.yaml
         kubectl apply -f istio-${ISTIO_VERSION}/samples/helloworld/helloworld.yaml
-        while true; do [ "$(kubectl get po -l app=sleep | grep '2/2')" = "" ] || break && sleep 3; done
-        while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && sleep 3; done
+        while true; do [ "$(kubectl get po -l app=sleep | grep '2/2')" = "" ] || break && (echo waiting for sleep app ready; sleep 3); done
+        while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
     - name: test connect without Merbridge
       run: |
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
     - name: install merbridge
       run: |
-        go run -exec sudo ./cmd/mbctl/main.go --kind -m istio -d &
+        nohup go run -exec sudo ./cmd/mbctl/main.go --kind -m istio -d > mbctl.log &
+        while true; do [ "$(cat mbctl.log | grep 'pod watcher ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
     - name: test connect with Merbridge
       run: |
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
         # check if eBPF works
-        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; bpftool prog; bpftool map; ps -ef; exit 1)
+        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 10) || exit 0
