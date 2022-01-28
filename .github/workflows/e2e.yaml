@@ -1,0 +1,69 @@
+name: E2E CI
+
+on:
+  # push:
+  #   branches: [ main, test ]
+  pull_request:
+    branches: [ main, test ]
+    types: [ labeled ]
+
+jobs:
+  istio-e2e:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    if: ${{ github.event.label.name == 'needs-e2e-test' }}
+    env: 
+      ISTIO_VERSION: '1.12.2'
+      KIND_VERSION: v0.11.1
+      KERNEL_VERSION: v5.4
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - name: install bpftool
+      run: |
+        sudo apt update && sudo apt install -y wget moby-engine clang git cmake make gcc python3 libncurses-dev gawk flex bison libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
+        git clone -b ${KERNEL_VERSION} https://github.com/torvalds/linux.git --depth 1
+        pushd .
+        cd linux/tools/bpf/bpftool && sudo make install
+        popd
+    - name: setup kind cluster
+      run: |
+        curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-$(uname)-amd64"
+        chmod +x ./kind
+        mv kind /usr/local/bin
+        kind create cluster
+        sudo mkdir /root/.kube
+        sudo cp ~/.kube/config /root/.kube
+    - name: try load and unload
+      run: |
+        uname -a
+        make load
+        make clean
+    - name: install istio
+      run: |
+        wget https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz
+        tar -zxf istio-${ISTIO_VERSION}-linux-amd64.tar.gz
+        cp -rf istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin
+        istioctl install -y
+    - name: deploy test apps
+      run: |
+        kubectl label ns default istio-injection=enabled
+        kubectl apply -f istio-${ISTIO_VERSION}/samples/sleep/sleep.yaml
+        kubectl apply -f istio-${ISTIO_VERSION}/samples/helloworld/helloworld.yaml
+        while true; do [ "$(kubectl get po -l app=sleep | grep '2/2')" = "" ] || break && (echo waiting for sleep app ready; sleep 3); done
+        while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
+    - name: test connect without Merbridge
+      run: |
+        kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
+    - name: install merbridge
+      run: |
+        nohup go run -exec sudo ./cmd/mbctl/main.go --kind -m istio -d > mbctl.log &
+        while true; do [ "$(cat mbctl.log | grep 'pod watcher ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
+    - name: test connect with Merbridge
+      run: |
+        kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
+        # check if eBPF works
+        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 10) || exit 0
