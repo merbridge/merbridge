@@ -4,7 +4,7 @@
 #include <linux/bpf.h>
 #include <linux/in.h>
 
-int sockops_ipv4(struct bpf_sock_ops *skops)
+static inline int sockops_ipv4(struct bpf_sock_ops *skops)
 {
     __u64 cookie = bpf_get_socket_cookie_ops(skops);
 

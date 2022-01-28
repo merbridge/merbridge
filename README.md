@@ -18,7 +18,7 @@ Or on Linkerd cluster:
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-linkerd.yaml
 ```
 
-> Note: currently only works on Linux kernel >= 5.15, run `uname -r` check your kernel version before install merbridge.
+> Note: currently only works on Linux kernel >= 5.11, run `uname -r` check your kernel version before install merbridge.
 
 ### Uninstall
 
