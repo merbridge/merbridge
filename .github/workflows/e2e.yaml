@@ -69,4 +69,4 @@ jobs:
       run: |
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
         # check if eBPF works
-        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; exit 1)
+        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; bpftool prog; bpftool map; ps -ef; exit 1)

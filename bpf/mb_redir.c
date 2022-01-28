@@ -1,14 +1,7 @@
 #include "headers/helpers.h"
+#include "headers/maps.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
-
-struct bpf_map __section("maps") sock_pair_map = {
-    .type = BPF_MAP_TYPE_SOCKHASH,
-    .key_size = sizeof(struct pair),
-    .value_size = sizeof(__u32),
-    .max_entries = 65535,
-    .map_flags = 0,
-};
 
 __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
 {
@@ -16,9 +9,11 @@ __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
         .sip = msg->local_ip4,
         .sport = msg->local_port,
         .dip = msg->remote_ip4,
-        .dport = msg->remote_port,
+        .dport = msg->remote_port >> 16,
     };
-    bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
+    long ret = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
+    if (ret)
+        debugf("redirect %d bytes with eBPF successfully", msg->size);
     return 1;
 }
 

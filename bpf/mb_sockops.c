@@ -1,8 +1,10 @@
 #include "headers/helpers.h"
+#include "headers/maps.h"
 #include "headers/mesh.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
 
+<<<<<<< HEAD
 struct bpf_map __section("maps") cookie_original_dst = {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .key_size = sizeof(__u32),
@@ -37,6 +39,9 @@ struct bpf_map __section("maps") sock_pair_map = {
 };
 
 static inline int sockops_ipv4(struct bpf_sock_ops *skops)
+=======
+int sockops_ipv4(struct bpf_sock_ops *skops)
+>>>>>>> c424a7ee0a452d3e7e2f4d84224cc48a1b9db853
 {
     __u64 cookie = bpf_get_socket_cookie_ops(skops);
 
@@ -51,7 +56,7 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
             // but we send it to wrong port(15006).
             // we should reject this connection.
             // and alse update process_ip table.
-            debugf("incorrect connection: cookie=%d", cookie);
+            printk("incorrect connection: cookie=%d", cookie);
             __u32 pid = dd.pid;
             __u32 ip = skops->remote_ip4;
             bpf_map_update_elem(&process_ip, &pid, &ip, BPF_ANY);
@@ -63,13 +68,10 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
             .sip = skops->local_ip4,
             .sport = skops->local_port,
             .dip = skops->remote_ip4,
-            .dport = skops->remote_port,
+            .dport = skops->remote_port >> 16,
         };
-        struct pair pp = p;
-        if (!p.dport) // skops->remote_port may be 0
-            p.dport = dd.re_dport;
         bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
-        bpf_sock_hash_update(skops, &sock_pair_map, &pp, BPF_NOEXIST);
+        bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
     }
     return 0;
 }

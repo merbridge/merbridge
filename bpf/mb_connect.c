@@ -1,35 +1,8 @@
 #include "headers/helpers.h"
+#include "headers/maps.h"
 #include "headers/mesh.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
-
-struct bpf_map __section("maps") cookie_original_dst = {
-    .type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u32),
-    .value_size = sizeof(struct origin_info),
-    .max_entries = 65535,
-    .map_flags = 0,
-};
-
-// local_pods stores Pods' ips in current node.
-// which can be set by controller.
-// only contains injected pods.
-struct bpf_map __section("maps") local_pod_ips = {
-    .type = BPF_MAP_TYPE_HASH,
-    .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
-    .max_entries = 1024,
-    .map_flags = 0,
-};
-
-// process_ip stores envoy's ip address.
-struct bpf_map __section("maps") process_ip = {
-    .type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
-    .max_entries = 1024,
-    .map_flags = 0,
-};
 
 static __u32 outip = 1;
 
@@ -66,7 +39,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         };
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_ANY)) {
-            debugf("write cookie_original_dst failed");
+            printk("write cookie_original_dst failed");
             return 0;
         }
         // The reason we try the IP of the 127.128.0.0/20 segment instead of
@@ -80,12 +53,12 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
         // from envoy to others
-        debugf("call from user container: ip: 0x%x, port: %d", ctx->user_ip4,
+        debugf("call from sidecar container: ip: 0x%x, port: %d", ctx->user_ip4,
                bpf_htons(ctx->user_port));
         __u32 ip = ctx->user_ip4;
         if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
             // dst ip is not in this node, bypass
-            debugf("dest ip: 0x%x not in this node, bypass", ctx->user_ip4);
+            printk("dest ip: 0x%x not in this node, bypass", ctx->user_ip4);
             return 1;
         }
         // dst ip is in this node, but not the current pod,
@@ -103,7 +76,6 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
                 // debugf("enovy to other");
             }
-            // debugf("envoy to local");
             // envoy to app, no rewrite
         } else {
             // envoy to envoy
@@ -118,7 +90,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         origin.re_dport = ctx->user_port;
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_NOEXIST)) {
-            debugf("update cookie origin failed");
+            printk("update cookie origin failed");
             return 0;
         }
     }

@@ -1,17 +1,10 @@
 #include "headers/helpers.h"
+#include "headers/maps.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
 
 #define MAX_OPS_BUFF_LENGTH 4096
 #define SO_ORIGINAL_DST 80
-
-struct bpf_map __section("maps") pair_original_dst = {
-    .type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(struct pair),
-    .value_size = sizeof(struct origin_info),
-    .max_entries = 65535,
-    .map_flags = 0,
-};
 
 __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
 {
@@ -24,20 +17,13 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
     // return original dst info.
     if (ctx->optname == SO_ORIGINAL_DST) {
         struct pair p = {
-            .sip = ctx->sk->src_ip4,
-            .sport = bpf_htons(ctx->sk->src_port),
-            .dip = ctx->sk->dst_ip4,
-            .dport = bpf_htons(ctx->sk->dst_port),
+            .dip = ctx->sk->src_ip4,
+            .dport = bpf_htons(ctx->sk->src_port),
+            .sip = ctx->sk->dst_ip4,
+            .sport = bpf_htons(ctx->sk->dst_port),
         };
-        struct origin_info *origin;
-        origin = bpf_map_lookup_elem(&pair_original_dst, &p);
-        if (!origin) {
-            p.dip = ctx->sk->src_ip4;
-            p.dport = bpf_htons(ctx->sk->src_port);
-            p.sip = ctx->sk->dst_ip4;
-            p.sport = bpf_htons(ctx->sk->dst_port);
-            origin = bpf_map_lookup_elem(&pair_original_dst, &p);
-        }
+        struct origin_info *origin =
+            bpf_map_lookup_elem(&pair_original_dst, &p);
         if (origin) {
             // rewrite original_dst
             ctx->optlen = (__s32)sizeof(struct sockaddr_in);
