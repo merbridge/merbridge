@@ -1,8 +1,8 @@
-name: E2E CI
+name: E2E Test
 
 on:
-  # push:
-  #   branches: [ main, test ]
+  push:
+    branches: [ main, test ]
   pull_request:
     branches: [ main, test ]
     types: [ labeled ]
@@ -24,6 +24,7 @@ jobs:
         go-version: 1.17
     - name: install bpftool
       run: |
+        # todo optimize this with binary.
         sudo apt update && sudo apt install -y wget moby-engine clang git cmake make gcc python3 libncurses-dev gawk flex bison libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
         git clone -b ${KERNEL_VERSION} https://github.com/torvalds/linux.git --depth 1
         pushd .
@@ -66,4 +67,68 @@ jobs:
       run: |
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
         # check if eBPF works
-        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 10) || exit 0
+        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 1)
+
+  linkerd-e2e:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    # if: ${{ github.event.label.name == 'needs-e2e-test' }}
+    env: 
+      KIND_VERSION: v0.11.1
+      KERNEL_VERSION: v5.4
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - name: install bpftool
+      run: |
+        sudo apt update && sudo apt install -y wget moby-engine clang git cmake make gcc python3 libncurses-dev gawk flex bison libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
+        git clone -b ${KERNEL_VERSION} https://github.com/torvalds/linux.git --depth 1
+        pushd .
+        cd linux/tools/bpf/bpftool && sudo make install
+        popd
+    - name: setup kind cluster
+      run: |
+        curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-$(uname)-amd64"
+        chmod +x ./kind
+        mv kind /usr/local/bin
+        kind create cluster
+        sudo mkdir /root/.kube
+        sudo cp ~/.kube/config /root/.kube
+    - name: try load and unload
+      run: |
+        uname -a
+        make load
+        make clean
+    - name: install linkerd
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
+        cp ~/.linkerd2/bin/* /usr/local/bin
+        linkerd install | kubectl apply -f -
+        while true; do linkerd check && break || (echo waiting linkerd ready; kubectl -n linkerd get deploy; sleep 3); done
+    - name: deploy test apps
+      run: |
+        curl -sSL https://raw.githubusercontent.com/istio/istio/master/samples/helloworld/helloworld.yaml | linkerd inject - | kubectl apply -f -
+        curl -sSL https://raw.githubusercontent.com/istio/istio/master/samples/sleep/sleep.yaml | linkerd inject - | kubectl apply -f -
+        while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
+        while true; do [ "$(kubectl get po -l app=sleep | grep '2/2')" = "" ] || break && (echo waiting for sleep app ready; sleep 3); done
+    - name: test connect without Merbridge
+      run: |
+        kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
+    - name: install merbridge
+      run: |
+        nohup go run -exec sudo ./cmd/mbctl/main.go --kind -m linkerd -d > mbctl.log &
+        while true; do [ "$(cat mbctl.log | grep 'pod watcher ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
+    - name: recreate apps
+      run: |
+        kubectl delete po --all    
+        while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
+        while true; do [ "$(kubectl get po -l app=sleep | grep '2/2')" = "" ] || break && (echo waiting for sleep app ready; sleep 3); done
+    - name: test connect with Merbridge
+      run: |
+        sudo cat /sys/kernel/debug/tracing/trace_pipe &
+        kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- sh -c 'while true; do curl -s -v helloworld:5000/hello && break || sleep 3; done'
+        # check if eBPF works
+        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; sudo bpftool prog; sudo bpftool map; cat mbctl.log; exit 1)
