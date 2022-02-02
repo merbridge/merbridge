@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a bug to help us improve Merbridge
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: Tell us what issues you ran into
+      placeholder: Include information about what you tried, what you expected to happen, and what actually happened. The more details, the better!
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Version
+      description: Include the output of `uname -a`, `cat /etc/os-release`, and Istio or linkerd version.
+      render: prose
+      placeholder: |
+        $ uname -a
+        Linux Kebe-PC 5.15.13-051513-generic #202201050731 SMP Wed Jan 5 13:05:30 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
+        $ cat /etc/os-release
+        NAME="Ubuntu"
+        VERSION="20.04.2 LTS (Focal Fossa)"
+        ...
+        $ istioctl version
+        ...
+    validations:
+      required: true
