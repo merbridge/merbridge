@@ -81,7 +81,6 @@ spec:
           - mountPath: /sys/fs
             name: sys-fs
       dnsPolicy: ClusterFirst
-      hostNetwork: true
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-node-critical
