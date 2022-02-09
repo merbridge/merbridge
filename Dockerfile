@@ -3,7 +3,6 @@ FROM ubuntu:20.04 as compiler
 
 WORKDIR /app
 
-# ENV TZ=Asia/Shanghai
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update &&\
@@ -14,13 +13,6 @@ RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
 
 RUN cd /app/linux/tools/bpf/bpftool && \
     make && make install
-
-RUN apt install -y clang
-# /usr/local/sbin/bpftool
-
-ADD . .
-
-RUN cd /app && make compile
 
 FROM golang:1.17 as mbctl
 
@@ -40,10 +32,9 @@ FROM ubuntu:20.04
 WORKDIR /app
 
 RUN apt update && apt install -y libelf-dev make sudo clang
-ADD bpf bpf
 COPY --from=compiler /usr/local/sbin/bpftool /usr/local/sbin/bpftool
-COPY --from=compiler /app/bpf/Makefile bpf/
-COPY --from=compiler /app/Makefile Makefile
+COPY bpf bpf
+COPY Makefile Makefile
 COPY --from=mbctl /app/dist/mbctl mbctl
 
 CMD /app/mbctl
