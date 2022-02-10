@@ -86,7 +86,7 @@ spec:
             name: host-ips
       initContainers:
       - image: ghcr.io/merbridge/merbridge:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         name: init
         args:
         - sh
