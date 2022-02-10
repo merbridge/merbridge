@@ -85,7 +85,7 @@ spec:
           - mountPath: /host/ips
             name: host-ips
       initContainers:
-      - image: kebe/merbridge:test
+      - image: ghcr.io/merbridge/merbridge:latest
         imagePullPolicy: IfNotPresent
         name: init
         args:
