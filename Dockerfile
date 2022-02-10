@@ -31,7 +31,7 @@ FROM ubuntu:20.04
 
 WORKDIR /app
 
-RUN apt update && apt install -y libelf-dev make sudo clang
+RUN apt update && apt install -y libelf-dev make sudo clang iproute2
 COPY --from=compiler /usr/local/sbin/bpftool /usr/local/sbin/bpftool
 COPY bpf bpf
 COPY Makefile Makefile

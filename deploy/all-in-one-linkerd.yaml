@@ -55,13 +55,15 @@ spec:
         app: merbridge
     spec:
       containers:
-      - image: merbridge/merbridge:latest
+      - image: ghcr.io/merbridge/merbridge:latest
         imagePullPolicy: Always
         name: merbridge
         args:
         - /app/mbctl
         - -m
         - linkerd
+        - --ips-file
+        - /host/ips/ips.txt
         lifecycle:
           preStop:
             exec:
@@ -80,6 +82,30 @@ spec:
         volumeMounts:
           - mountPath: /sys/fs
             name: sys-fs
+          - mountPath: /host/ips
+            name: host-ips
+      initContainers:
+      - image: ghcr.io/merbridge/merbridge:latest
+        imagePullPolicy: IfNotPresent
+        name: init
+        args:
+        - sh
+        - -c
+        - nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee /host/ips/ips.txt
+        resources: 
+          requests:
+            cpu: 100m
+            memory: 50Mi
+          limits:
+            cpu: 300m
+            memory: 50Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /host/ips
+            name: host-ips
+          - mountPath: /host/proc
+            name: host-proc
       dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
@@ -95,3 +121,8 @@ spec:
       - hostPath:
           path: /sys/fs
         name: sys-fs
+      - hostPath:
+          path: /proc
+        name: host-proc
+      - emptyDir: {}
+        name: host-ips
