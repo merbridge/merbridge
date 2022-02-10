@@ -49,9 +49,11 @@ func main() {
 	mode := ""
 	debug := false
 	isKind := false // is Run Kubernetes in Docker
+	ipsFile := ""
 	flag.StringVar(&mode, "m", modeIstio, "Service mesh mode, current support istio and linkerd")
 	flag.BoolVar(&debug, "d", false, "Debug mode")
 	flag.BoolVar(&isKind, "kind", false, "Kubernetes in Kind mode")
+	flag.StringVar(&ipsFile, "ips-file", "", "Current node ips file name")
 	flag.Parse()
 	if debug {
 		log.SetLevel(log.DebugLevel)
@@ -88,7 +90,7 @@ func main() {
 			log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
 			podHostIP := pod.Status.HostIP
 			if currentNodeIP == "" {
-				if linux.IsCurrentNodeIP(podHostIP) {
+				if linux.IsCurrentNodeIP(podHostIP, ipsFile) {
 					currentNodeIP = podHostIP
 				}
 			}
