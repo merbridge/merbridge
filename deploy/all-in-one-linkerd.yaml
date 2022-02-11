@@ -69,6 +69,7 @@ spec:
             exec:
               command:
               - make
+              - -k
               - clean
         resources: 
           requests:
