@@ -58,7 +58,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         __u32 ip = ctx->user_ip4;
         if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
             // dst ip is not in this node, bypass
-            printk("dest ip: 0x%x not in this node, bypass", ctx->user_ip4);
+            debugf("dest ip: 0x%x not in this node, bypass", ctx->user_ip4);
             return 1;
         }
         // dst ip is in this node, but not the current pod,
