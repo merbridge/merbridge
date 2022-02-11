@@ -70,11 +70,7 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
 #else
 // only print traceing in debug mode
 #ifndef debugf
-#define debugf(fmt, ...)                                                       \
-    ({                                                                         \
-        char ____fmt[] = fmt;                                                  \
-        bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);             \
-    })
+#define debugf printk
 #endif
 
 #endif

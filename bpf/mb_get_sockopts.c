@@ -11,6 +11,9 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
     // currently, eBPF can not deal with optlen more than 4096 bytes, so, we
     // should limit this.
     if (ctx->optlen > MAX_OPS_BUFF_LENGTH) {
+        debugf("optname: %d, force set optlen to %d, original optlen %d is too "
+               "high",
+               ctx->optname, MAX_OPS_BUFF_LENGTH, ctx->optlen);
         ctx->optlen = MAX_OPS_BUFF_LENGTH;
     }
     // envoy will call getsockopt with SO_ORIGINAL_DST, we should rewrite it to
@@ -29,13 +32,15 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             ctx->optlen = (__s32)sizeof(struct sockaddr_in);
             if ((void *)((struct sockaddr_in *)ctx->optval + 1) >
                 ctx->optval_end) {
+                printk("optname: %d: invalid getsockopt optval", ctx->optname);
                 return 1;
             }
             ctx->retval = 0;
-            struct sockaddr_in sa;
-            sa.sin_family = ctx->sk->family;
-            sa.sin_addr.s_addr = origin->ip;
-            sa.sin_port = origin->port;
+            struct sockaddr_in sa = {
+                .sin_family = ctx->sk->family,
+                .sin_addr.s_addr = origin->ip,
+                .sin_port = origin->port,
+            };
             *(struct sockaddr_in *)ctx->optval = sa;
         }
     }
