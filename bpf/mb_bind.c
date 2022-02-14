@@ -19,7 +19,7 @@ __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
         if (uid == SIDECAR_USER_ID) {
             // linkerd listen localhost, we have to change the bind address to
             // 0.0.0.0:4140
-            printk("change bind address from 127.0.0.1:4140 to 0.0.0.0:4140");
+            printk("change bind address from 127.0.0.1:%d to 0.0.0.0:%d", OUT_REDIRECT_PORT, OUT_REDIRECT_PORT);
             ctx->user_ip4 = 0;
         }
     }
