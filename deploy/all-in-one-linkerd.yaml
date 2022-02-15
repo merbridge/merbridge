@@ -64,6 +64,7 @@ spec:
         - linkerd
         - --ips-file
         - /host/ips/ips.txt
+        - --use-reconnect=false
         lifecycle:
           preStop:
             exec:

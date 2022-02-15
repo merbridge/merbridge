@@ -52,7 +52,7 @@ func main() {
 	isKind := false // is Run Kubernetes in Docker
 	ipsFile := ""
 	flag.StringVar(&mode, "m", modeIstio, "Service mesh mode, current support istio and linkerd")
-	flag.BoolVar(&useReconnect, "use-reconnect", false, "Service mesh mode, current support istio and linkerd")
+	flag.BoolVar(&useReconnect, "use-reconnect", true, "Use re-connect mode as same-node acceleration")
 	flag.BoolVar(&debug, "d", false, "Debug mode")
 	flag.BoolVar(&isKind, "kind", false, "Kubernetes in Kind mode")
 	flag.StringVar(&ipsFile, "ips-file", "", "Current node ips file name")
