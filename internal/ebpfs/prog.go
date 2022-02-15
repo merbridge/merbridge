@@ -29,7 +29,7 @@ func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
 }
 
 func UnLoadMBProgs() error {
-	cmd := exec.Command("make", "clean")
+	cmd := exec.Command("make", "-k", "clean")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
