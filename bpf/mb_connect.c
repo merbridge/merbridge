@@ -35,7 +35,7 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
             .ip = ctx->user_ip4,
             .port = ctx->user_port,
             .pid = pid,
-            .re_dport = bpf_htons(OUT_REDIRECT_PORT),
+            .flags = 1,
         };
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_ANY)) {
@@ -73,11 +73,15 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         if (curr_ip) {
             // envoy to other envoy
             if (*(__u32 *)curr_ip != ctx->user_ip4) {
+                debugf("enovy to other, rewrite dst port from %d to %d",
+                       ctx->user_port, IN_REDIRECT_PORT);
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
-                // debugf("enovy to other");
             }
+            origin.flags |= 1;
             // envoy to app, no rewrite
         } else {
+            origin.flags = 0;
+#ifdef USE_RECONNECT
             // envoy to envoy
             // try redirect to 15006
             // but it may cause error if it is envoy call self pod,
@@ -86,8 +90,8 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
             // we should reject this traffic in sockops,
             // envoy will create a new connection to self pod.
             ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
+#endif
         }
-        origin.re_dport = ctx->user_port;
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_NOEXIST)) {
             printk("update cookie origin failed");
