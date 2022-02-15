@@ -97,7 +97,8 @@ struct origin_info {
     __u32 pid;
     __u32 ip;
     __u16 port;
-    __u16 re_dport;
+    // last bit means that ip of process is detected.
+    __u16 flags;
 };
 
 struct pair {

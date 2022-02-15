@@ -11,19 +11,27 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
     void *dst = bpf_map_lookup_elem(&cookie_original_dst, &cookie);
     if (dst) {
         struct origin_info dd = *(struct origin_info *)dst;
-        if (bpf_htons(dd.re_dport) == IN_REDIRECT_PORT &&
-            (skops->local_ip4 == 100663423 ||
-             skops->local_ip4 == skops->remote_ip4)) {
-            // the is an incorrrct connection,
-            // envoy want to call self container port,
-            // but we send it to wrong port(15006).
-            // we should reject this connection.
-            // and alse update process_ip table.
-            printk("incorrect connection: cookie=%d", cookie);
+        if (!(dd.flags & 1)) {
             __u32 pid = dd.pid;
-            __u32 ip = skops->remote_ip4;
-            bpf_map_update_elem(&process_ip, &pid, &ip, BPF_ANY);
-            return 1;
+            // process ip not detected
+            if (skops->local_ip4 == 100663423 ||
+                skops->local_ip4 == skops->remote_ip4) {
+                // envoy to local
+                __u32 ip = skops->remote_ip4;
+                debugf("detected process %d's ip is %d", pid, ip);
+                bpf_map_update_elem(&process_ip, &pid, &ip, BPF_ANY);
+#ifdef USE_RECONNECT
+                if (skops->remote_port >> 16 == bpf_htons(IN_REDIRECT_PORT)) {
+                    printk("incorrect connection: cookie=%d", cookie);
+                    return 1;
+                }
+#endif
+            } else {
+                // envoy to envoy
+                __u32 ip = skops->local_ip4;
+                bpf_map_update_elem(&process_ip, &pid, &ip, BPF_ANY);
+                debugf("detected process %d's ip is %d", pid, ip);
+            }
         }
         // get_sockopts can read pid and cookie,
         // we should write a new map named pair_original_dst

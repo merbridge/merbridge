@@ -47,10 +47,12 @@ const (
 
 func main() {
 	mode := ""
+	useReconnect := true
 	debug := false
 	isKind := false // is Run Kubernetes in Docker
 	ipsFile := ""
 	flag.StringVar(&mode, "m", modeIstio, "Service mesh mode, current support istio and linkerd")
+	flag.BoolVar(&useReconnect, "use-reconnect", false, "Service mesh mode, current support istio and linkerd")
 	flag.BoolVar(&debug, "d", false, "Debug mode")
 	flag.BoolVar(&isKind, "kind", false, "Kubernetes in Kind mode")
 	flag.StringVar(&ipsFile, "ips-file", "", "Current node ips file name")
@@ -62,7 +64,7 @@ func main() {
 		log.Errorf("invalid mode %q, current only support istio and linkerd", mode)
 		os.Exit(1)
 	}
-	if err := ebpfs.LoadMBProgs(mode, debug); err != nil {
+	if err := ebpfs.LoadMBProgs(mode, useReconnect, debug); err != nil {
 		panic(err)
 	}
 	m, err := ebpf.LoadPinnedMap("/sys/fs/bpf/local_pod_ips", &ebpf.LoadPinOptions{})
