@@ -25,10 +25,10 @@ jobs:
         go-version: 1.17
     - name: install bpftool
       run: |
-        bash ./scripts/build-bpftool.sh
+        sudo bash ./scripts/build-bpftool.sh
     - name: setup kind cluster
       run: |
-        bash ./scripts/setup-kind.sh
+        ./scripts/setup-kind.sh
     - name: try load and unload
       run: |
         uname -a
@@ -40,8 +40,8 @@ jobs:
     - name: deploy test apps
       run: |
         kubectl label ns default istio-injection=enabled
-        kubectl apply -f istio-${ISTIO_VERSION}/samples/sleep/sleep.yaml
-        kubectl apply -f istio-${ISTIO_VERSION}/samples/helloworld/helloworld.yaml
+        kubectl apply -f https://raw.githubusercontent.com/istio/istio/master/samples/sleep/sleep.yaml
+        kubectl apply -f https://raw.githubusercontent.com/istio/istio/master/samples/helloworld/helloworld.yaml
         while true; do [ "$(kubectl get po -l app=sleep | grep '2/2')" = "" ] || break && (echo waiting for sleep app ready; sleep 3); done
         while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
     - name: test connect without Merbridge
