@@ -12,7 +12,12 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
     if (ctx->protocol != IPPROTO_TCP) {
         return 1;
     }
-    __u32 pid = bpf_get_current_pid_tgid() & 0xffffffff;
+    // u64 bpf_get_current_pid_tgid(void)
+    // Return A 64-bit integer containing the current tgid and
+    //                 pid, and created as such: current_task->tgid << 32
+    //                | current_task->pid.
+    // pid may be thread id, we should use tgid
+    __u32 pid = bpf_get_current_pid_tgid() >> 32; // tgid
     __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
 
     // todo(kebe7jun) more reliable way to verify,
