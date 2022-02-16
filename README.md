@@ -36,6 +36,14 @@ kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/dep
 
 Join the [Merbridge slack](https://join.slack.com/t/merbridge/shared_invite/zt-11uc3z0w7-DMyv42eQ6s5YUxO5mZ5hwQ).
 
+## Contributors
+
+<a href="https://github.com/merbridge/merbridge/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=merbridge/merbridge" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
+
 ## License
 Copyright 2022 the Merbridge Authors. All rights reserved.
 
