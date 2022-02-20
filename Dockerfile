@@ -5,8 +5,8 @@ WORKDIR /app
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt update &&\
-    apt install -y git cmake make gcc python3 libncurses-dev gawk flex bison openssl \
+RUN apt-get update &&\
+    apt-get install -y git cmake make gcc python3 libncurses-dev gawk flex bison openssl \
     libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
 
 RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
@@ -31,7 +31,7 @@ FROM ubuntu:20.04
 
 WORKDIR /app
 
-RUN apt update && apt install -y libelf-dev make sudo clang iproute2
+RUN apt-get update && apt-get install -y libelf-dev make sudo clang iproute2
 COPY --from=compiler /usr/local/sbin/bpftool /usr/local/sbin/bpftool
 COPY bpf bpf
 COPY Makefile Makefile
