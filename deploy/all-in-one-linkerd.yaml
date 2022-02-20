@@ -1,9 +1,20 @@
+---
+# Source: merbridge/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: merbridge
+  namespace: linkerd
+  labels:
+    app: merbridge
+---
+# Source: merbridge/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: merbridge
   labels:
     app: merbridge
-  name: merbridge
 rules:
 - apiGroups:
   - ""
@@ -14,12 +25,13 @@ rules:
   - get
   - watch
 ---
+# Source: merbridge/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  name: merbridge
   labels:
     app: merbridge
-  name: merbridge
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -29,21 +41,14 @@ subjects:
   name: merbridge
   namespace: linkerd
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  labels:
-    app: merbridge
-  name: merbridge
-  namespace: linkerd
----
+# Source: merbridge/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  labels:
-    app: merbridge
   name: merbridge
   namespace: linkerd
+  labels:
+    app: merbridge
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -55,7 +60,7 @@ spec:
         app: merbridge
     spec:
       containers:
-      - image: ghcr.io/merbridge/merbridge:latest
+      - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
         name: merbridge
         args:
@@ -64,7 +69,7 @@ spec:
         - linkerd
         - --ips-file
         - /host/ips/ips.txt
-        - --use-reconnect=false
+        - --use-reconnect=false 
         lifecycle:
           preStop:
             exec:
@@ -87,7 +92,7 @@ spec:
           - mountPath: /host/ips
             name: host-ips
       initContainers:
-      - image: ghcr.io/merbridge/merbridge:latest
+      - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
         name: init
         args:

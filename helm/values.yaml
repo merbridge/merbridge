@@ -1,0 +1,35 @@
+# Default values for merbridge.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# some settings of merbridge when start up
+merbridge:
+  fullname: merbridge
+  namespace: istio-system
+  mode: istio
+  ipsFilePath: /host/ips/ips.txt
+
+# some settings of deployment
+deployment:
+  image:
+    repository: ghcr.io/merbridge/merbridge
+    # Overrides the image tag whose default is the latest version.
+    tag: latest
+    pullPolicy: Always
+  resources:
+    container:
+      limit:
+        cpu: 300m
+        memory: 200Mi
+      request:
+        cpu: 100m
+        memory: 200Mi
+    init:
+      limit:
+        cpu: 300m
+        memory: 50Mi
+      request:
+        cpu: 100m
+        memory: 50Mi
+  dnsPolicy: ClusterFirst
+  revisionHistoryLimit: 10
