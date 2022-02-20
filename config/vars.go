@@ -13,24 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package pods
+package config
 
-import v1 "k8s.io/api/core/v1"
+import "github.com/cilium/ebpf"
 
-func IsIstioInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "istio-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
-	}
-	return false
-}
+const (
+	ModeIstio   = "istio"
+	ModeLinkerd = "linkerd"
+	LocalPodIps = "/sys/fs/bpf/local_pod_ips"
+)
 
-func IsLinkerdInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "linkerd-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
-	}
-	return false
-}
+var (
+	CurrentNodeIP     string
+	Mode              string
+	IpsFile           string
+	UseReconnect      = true
+	Debug             = false
+	IsKind            = false // is Run Kubernetes in Docker
+	EbpfLoadPinnedMap *ebpf.Map
+)

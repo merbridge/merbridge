@@ -13,24 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package pods
+package main
 
-import v1 "k8s.io/api/core/v1"
+import "github.com/merbridge/merbridge/app/cmd"
 
-func IsIstioInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "istio-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
-	}
-	return false
-}
-
-func IsLinkerdInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "linkerd-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
-	}
-	return false
+func main() {
+	cmd.Execute()
 }
