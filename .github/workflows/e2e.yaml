@@ -49,7 +49,7 @@ jobs:
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
     - name: install merbridge
       run: |
-        nohup go run -exec sudo ./cmd/mbctl/main.go --kind -m istio -d > mbctl.log &
+        nohup go run -exec sudo ./cmd/mbctl/main.go -k true -m istio -d true > mbctl.log &
         while true; do [ "$(cat mbctl.log | grep 'pod watcher ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
     - name: test connect with Merbridge
       run: |
