@@ -23,17 +23,22 @@ lint: lint-c lint-go
 
 format: format-c format-go
 
+# update generated yaml for merbridge on linkerd and istio deploy templates
 helm: helm-linkerd helm-istio
 
+# generate merbridge on linkerd deploy templates
 helm-linkerd:
 	helm template --set-string "mode=linkerd" -n "linkerd" merbridge helm > deploy/all-in-one-linkerd.yaml
 
+# generate merbridge on istio deploy templates
 helm-istio:
 	helm template -n "istio-system" merbridge helm > deploy/all-in-one.yaml
 
+# package helm release
 helm-package:
 	helm package helm
 
+# install helm
 helm-install:
 	curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
