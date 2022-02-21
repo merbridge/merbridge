@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "merbridge.labels" . | nindent 4 }}
+spec:
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "merbridge.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "merbridge.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: {{ .Values.fullname }}
+        args:
+        {{- include "merbridge.cmd.args" . | nindent 8 }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              {{- include "merbridge.cmd.clean" . | nindent 14 }}
+        resources: 
+          requests:
+            cpu: {{ .Values.resources.container.request.cpu }}
+            memory: {{ .Values.resources.container.request.memory }}
+          limits:
+            cpu: {{ .Values.resources.container.limit.cpu }}
+            memory: {{ .Values.resources.container.limit.memory }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /sys/fs
+            name: sys-fs
+          - mountPath: /host/ips
+            name: host-ips
+      initContainers:
+      - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: init
+        args:
+        {{- include "merbridge.cmd.init.args" . | nindent 8 }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.init.request.cpu }}
+            memory: {{ .Values.resources.init.request.memory }}
+          limits:
+            cpu: {{ .Values.resources.init.limit.cpu }}
+            memory: {{ .Values.resources.init.limit.memory }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /host/ips
+            name: host-ips
+          - mountPath: /host/proc
+            name: host-proc
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      nodeSelector:
+        {{- include "merbridge.nodeSelector" . | nindent 8 }}
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: {{ .Values.fullname }}
+      serviceAccountName: {{ .Values.fullname }}
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /sys/fs
+        name: sys-fs
+      - hostPath:
+          path: /proc
+        name: host-proc
+      - emptyDir: {}
+        name: host-ips

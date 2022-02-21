@@ -20,6 +20,8 @@ kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/depl
 
 > Note: currently only works on Linux kernel >= 5.7, run `uname -r` check your kernel version before install merbridge.
 
+If you want to install Merbridge by `Helm`, read the guidelines: [Deploy Merbridge with Helm](deploy/).
+
 ### Uninstall
 
 - Istio:

@@ -1,0 +1,5 @@
+Welcome to Merbridge! For more details on Merbridge, see: https://github.com/merbridge/merbridge
+
+The Merbridge [{{ .Chart.AppVersion }}] has been installed in namespace [{{ .Release.Namespace }}]. It will be ready soon.
+
+(Helm: Chart=[{{ .Chart.Name }}], Release=[{{ .Release.Name }}], Version=[{{ .Chart.Version }}])

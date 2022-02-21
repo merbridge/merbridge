@@ -1,9 +1,20 @@
+---
+# Source: merbridge/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: merbridge
+  namespace: istio-system
+  labels:
+    app: merbridge
+---
+# Source: merbridge/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: merbridge
   labels:
     app: merbridge
-  name: merbridge
 rules:
 - apiGroups:
   - ""
@@ -14,12 +25,13 @@ rules:
   - get
   - watch
 ---
+# Source: merbridge/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  name: merbridge
   labels:
     app: merbridge
-  name: merbridge
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -29,21 +41,14 @@ subjects:
   name: merbridge
   namespace: istio-system
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  labels:
-    app: merbridge
-  name: merbridge
-  namespace: istio-system
----
+# Source: merbridge/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  labels:
-    app: merbridge
   name: merbridge
   namespace: istio-system
+  labels:
+    app: merbridge
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -55,7 +60,7 @@ spec:
         app: merbridge
     spec:
       containers:
-      - image: ghcr.io/merbridge/merbridge:latest
+      - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
         name: merbridge
         args:
@@ -64,6 +69,7 @@ spec:
         - istio
         - --ips-file
         - /host/ips/ips.txt
+        - --use-reconnect=true
         lifecycle:
           preStop:
             exec:
@@ -86,14 +92,14 @@ spec:
           - mountPath: /host/ips
             name: host-ips
       initContainers:
-      - image: ghcr.io/merbridge/merbridge:latest
+      - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
         name: init
         args:
         - sh
         - -c
         - nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee /host/ips/ips.txt
-        resources: 
+        resources:
           requests:
             cpu: 100m
             memory: 50Mi
