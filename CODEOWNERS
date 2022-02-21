@@ -6,6 +6,7 @@
 /.golangci.yml      @merbridge/infra-maintainers
 /.clang-format      @merbridge/infra-maintainers
 /deploy             @merbridge/infra-maintainers
+/helm               @merbridge/infra-maintainers
 /cmd/               @merbridge/control-plane-maintainers
 /internal/          @merbridge/control-plane-maintainers
 /pkg/               @merbridge/control-plane-maintainers
