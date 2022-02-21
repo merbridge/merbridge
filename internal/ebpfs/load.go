@@ -13,24 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package pods
+package ebpfs
 
-import v1 "k8s.io/api/core/v1"
+import (
+	"fmt"
 
-func IsIstioInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "istio-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
+	"github.com/cilium/ebpf"
+
+	"github.com/merbridge/merbridge/config"
+)
+
+var EbpfLoadPinnedMap *ebpf.Map
+
+func InitLoadPinnedMap() error {
+	var err error
+	if err = LoadMBProgs(config.Mode, config.UseReconnect, config.Debug); err != nil {
+		return err
 	}
-	return false
+	EbpfLoadPinnedMap, err = ebpf.LoadPinnedMap(config.LocalPodIps, &ebpf.LoadPinOptions{})
+	if err != nil {
+		return fmt.Errorf("load map error: %v", err)
+	}
+	return nil
 }
 
-func IsLinkerdInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "linkerd-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
-	}
-	return false
+func GetPinnedMap() *ebpf.Map {
+	return EbpfLoadPinnedMap
 }

@@ -25,7 +25,7 @@ RUN go mod download
 
 ADD . .
 
-RUN go build -ldflags "-s -w" -o ./dist/mbctl ./cmd/mbctl/main.go
+RUN go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
 
 FROM ubuntu:20.04
 

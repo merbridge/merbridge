@@ -13,24 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package pods
+package options
 
-import v1 "k8s.io/api/core/v1"
+import (
+	"fmt"
 
-func IsIstioInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "istio-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
+	log "github.com/sirupsen/logrus"
+
+	"github.com/merbridge/merbridge/config"
+)
+
+// NewOptions setup tasks when start up and return a kubernetes client
+func NewOptions() error {
+	if config.Debug {
+		log.SetLevel(log.DebugLevel)
 	}
-	return false
-}
-
-func IsLinkerdInjectedSidecar(pod *v1.Pod) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "linkerd-proxy" && len(pod.Spec.Containers) != 1 {
-			return true
-		}
+	if config.Mode != config.ModeIstio && config.Mode != config.ModeLinkerd {
+		return fmt.Errorf("invalid mode %q, current only support istio and linkerd", config.Mode)
 	}
-	return false
+	return nil
 }

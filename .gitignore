@@ -15,3 +15,6 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 .idea/
+
+# The output of mbctl built binary
+dist/
