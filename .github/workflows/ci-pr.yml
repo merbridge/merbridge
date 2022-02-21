@@ -29,6 +29,8 @@ jobs:
       run: sudo apt update && sudo apt install -y clang-format
     - name: Code check
       run: make lint-c
+    - name: Helm check
+      run: make helm-ci
   go-unit-test:
     runs-on: ubuntu-20.04
     needs: [style-check]
