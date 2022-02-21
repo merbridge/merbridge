@@ -16,100 +16,50 @@ limitations under the License.
 package pods
 
 import (
-	"os"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	kubeinformer "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/cilium/ebpf"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
-
-	"github.com/merbridge/merbridge/config"
-	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-type Watcher interface {
+type WatcherAction interface {
 	Start() error
-	Stop()
+	Shutdown()
 }
 
-type watcher struct {
-	client          kubernetes.Interface
-	currentNodeName string
-	onAddFunc       func(obj interface{})
-	onUpdateFunc    func(oldObj, newObj interface{})
-	onDeleteFunc    func(obj interface{})
-	stop            chan struct{}
+type Watcher struct {
+	Client          kubernetes.Interface
+	CurrentNodeName string
+	OnAddFunc       func(obj interface{})
+	OnUpdateFunc    func(oldObj, newObj interface{})
+	OnDeleteFunc    func(obj interface{})
+	Stop            chan struct{}
 }
 
-func (w *watcher) Start() error {
-	kubeInformerFactory := kubeinformer.NewSharedInformerFactory(w.client, 30*time.Second)
+func (w *Watcher) Start() error {
+	kubeInformerFactory := kubeinformer.NewSharedInformerFactory(w.Client, 30*time.Second)
 	kubeInformerFactory.Core().V1().Pods().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    w.onAddFunc,
-		UpdateFunc: w.onUpdateFunc,
-		DeleteFunc: w.onDeleteFunc,
+		AddFunc:    w.OnAddFunc,
+		UpdateFunc: w.OnUpdateFunc,
+		DeleteFunc: w.OnDeleteFunc,
 	})
-	kubeInformerFactory.Start(w.stop)
+	kubeInformerFactory.Start(w.Stop)
 	return nil
 }
 
-func (w *watcher) Stop() {
-	close(w.stop)
+func (w *Watcher) Shutdown() {
+	close(w.Stop)
 }
 
-func NewWatcher(client kubernetes.Interface) Watcher {
-	locaName, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-
-	return &watcher{
-		client:          client,
-		currentNodeName: locaName,
-		onAddFunc:       AddFunc,
-		onUpdateFunc:    UpdateFunc,
-		onDeleteFunc:    DeleteFunc,
-		stop:            make(chan struct{}),
-	}
-}
-
-func AddFunc(obj interface{}) {
-	if pod, ok := obj.(*v1.Pod); ok {
-		if config.Mode == config.ModeIstio && !IsIstioInjectedSidecar(pod) {
-			return
-		}
-		if config.Mode == config.ModeLinkerd && !IsLinkerdInjectedSidecar(pod) {
-			return
-		}
-		log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
-		podHostIP := pod.Status.HostIP
-		if config.CurrentNodeIP == "" {
-			if linux.IsCurrentNodeIP(podHostIP, config.IpsFile) {
-				config.CurrentNodeIP = podHostIP
-			}
-		}
-		if podHostIP == config.CurrentNodeIP || config.IsKind {
-			_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-			log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
-			err := config.EbpfLoadPinnedMap.Update(_ip, uint32(0), ebpf.UpdateAny)
-			if err != nil {
-				log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
-			}
-		}
-	}
-}
-
-func UpdateFunc(old, newest interface{}) {
-	AddFunc(newest)
-}
-
-func DeleteFunc(obj interface{}) {
-	if pod, ok := obj.(*v1.Pod); ok {
-		log.Debugf("got pod delete %s/%s", pod.Namespace, pod.Name)
-		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-		_ = config.EbpfLoadPinnedMap.Delete(_ip)
+func NewWatcher(watch Watcher) *Watcher {
+	return &Watcher{
+		Client:          watch.Client,
+		CurrentNodeName: watch.CurrentNodeName,
+		OnAddFunc:       watch.OnAddFunc,
+		OnUpdateFunc:    watch.OnUpdateFunc,
+		OnDeleteFunc:    watch.OnDeleteFunc,
+		Stop:            make(chan struct{}),
 	}
 }

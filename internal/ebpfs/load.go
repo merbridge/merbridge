@@ -13,19 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package config
+package ebpfs
 
-const (
-	ModeIstio   = "istio"
-	ModeLinkerd = "linkerd"
-	LocalPodIps = "/sys/fs/bpf/local_pod_ips"
+import (
+	"fmt"
+
+	"github.com/cilium/ebpf"
+
+	"github.com/merbridge/merbridge/config"
 )
 
-var (
-	CurrentNodeIP string
-	Mode          string
-	IpsFile       string
-	UseReconnect  = true
-	Debug         = false
-	IsKind        = false // is Run Kubernetes in Docker
-)
+var EbpfLoadPinnedMap *ebpf.Map
+
+func InitLoadPinnedMap() error {
+	var err error
+	if err = LoadMBProgs(config.Mode, config.UseReconnect, config.Debug); err != nil {
+		return err
+	}
+	EbpfLoadPinnedMap, err = ebpf.LoadPinnedMap(config.LocalPodIps, &ebpf.LoadPinOptions{})
+	if err != nil {
+		return fmt.Errorf("load map error: %v", err)
+	}
+	return nil
+}
+
+func GetPinnedMap() *ebpf.Map {
+	return EbpfLoadPinnedMap
+}

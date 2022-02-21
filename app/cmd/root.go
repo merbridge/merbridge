@@ -18,18 +18,14 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/merbridge/merbridge/app/cmd/options"
 	"github.com/merbridge/merbridge/config"
-	"github.com/merbridge/merbridge/internal/ebpfs"
-	"github.com/merbridge/merbridge/internal/pods"
+	"github.com/merbridge/merbridge/controller"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -38,17 +34,9 @@ var rootCmd = &cobra.Command{
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		client := options.NewOptions()
-		w := pods.NewWatcher(client)
-
-		_ = w.Start()
-		log.Info("Pod Watcher Ready")
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-		<-ch
-		w.Stop()
-		_ = ebpfs.UnLoadMBProgs()
-		log.Info("Pod Watcher Down")
+		if err := controller.Run(); err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
