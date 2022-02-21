@@ -69,7 +69,7 @@ spec:
         - istio
         - --ips-file
         - /host/ips/ips.txt
-        
+        - --use-reconnect=true
         lifecycle:
           preStop:
             exec:
@@ -99,7 +99,7 @@ spec:
         - sh
         - -c
         - nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee /host/ips/ips.txt
-        resources: 
+        resources:
           requests:
             cpu: 100m
             memory: 50Mi

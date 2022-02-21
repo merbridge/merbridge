@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ .Values.merbridge.fullname }}
-  namespace: {{ .Values.merbridge.namespace }}
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "merbridge.labels" . | nindent 4 }}
 spec:
-  revisionHistoryLimit: {{ .Values.deployment.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   selector:
     matchLabels:
       {{- include "merbridge.labels" . | nindent 6 }}
@@ -16,9 +16,9 @@ spec:
         {{- include "merbridge.labels" . | nindent 8 }}
     spec:
       containers:
-      - image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
-        imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
-        name: {{ .Values.merbridge.fullname }}
+      - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: {{ .Values.fullname }}
         args:
         {{- include "merbridge.cmd.args" . | nindent 8 }}
         lifecycle:
@@ -28,11 +28,11 @@ spec:
               {{- include "merbridge.cmd.clean" . | nindent 14 }}
         resources: 
           requests:
-            cpu: {{ .Values.deployment.resources.container.request.cpu }}
-            memory: {{ .Values.deployment.resources.container.request.memory }}
+            cpu: {{ .Values.resources.container.request.cpu }}
+            memory: {{ .Values.resources.container.request.memory }}
           limits:
-            cpu: {{ .Values.deployment.resources.container.limit.cpu }}
-            memory: {{ .Values.deployment.resources.container.limit.memory }}
+            cpu: {{ .Values.resources.container.limit.cpu }}
+            memory: {{ .Values.resources.container.limit.memory }}
         securityContext:
           privileged: true
         volumeMounts:
@@ -41,18 +41,18 @@ spec:
           - mountPath: /host/ips
             name: host-ips
       initContainers:
-      - image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
-        imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
+      - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: init
         args:
         {{- include "merbridge.cmd.init.args" . | nindent 8 }}
-        resources: 
+        resources:
           requests:
-            cpu: {{ .Values.deployment.resources.init.request.cpu }}
-            memory: {{ .Values.deployment.resources.init.request.memory }}
+            cpu: {{ .Values.resources.init.request.cpu }}
+            memory: {{ .Values.resources.init.request.memory }}
           limits:
-            cpu: {{ .Values.deployment.resources.init.limit.cpu }}
-            memory: {{ .Values.deployment.resources.init.limit.memory }}
+            cpu: {{ .Values.resources.init.limit.cpu }}
+            memory: {{ .Values.resources.init.limit.memory }}
         securityContext:
           privileged: true
         volumeMounts:
@@ -60,13 +60,13 @@ spec:
             name: host-ips
           - mountPath: /host/proc
             name: host-proc
-      dnsPolicy: {{ .Values.deployment.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
       nodeSelector:
         {{- include "merbridge.nodeSelector" . | nindent 8 }}
       priorityClassName: system-node-critical
       restartPolicy: Always
-      serviceAccount: {{ .Values.merbridge.fullname }}
-      serviceAccountName: {{ .Values.merbridge.fullname }}
+      serviceAccount: {{ .Values.fullname }}
+      serviceAccountName: {{ .Values.fullname }}
       tolerations:
       - key: CriticalAddonsOnly
         operator: Exists

@@ -34,7 +34,7 @@ Create chart name and version as used by the chart label.
 Common labels
 */}}
 {{- define "merbridge.labels" -}}
-app: {{ .Values.merbridge.fullname }}
+app: {{ .Values.fullname }}
 {{- end }}
 
 {{/*
@@ -59,10 +59,10 @@ Merbridge args command
 {{- define "merbridge.cmd.args" -}}
 - /app/mbctl
 - -m
-- {{ .Values.merbridge.mode }}
+- {{ .Values.mode }}
 - --ips-file
-- {{ .Values.merbridge.ipsFilePath }}
-{{ if eq .Values.merbridge.mode "linkerd" }}- --use-reconnect=false {{ end }}
+- {{ .Values.ipsFilePath }}
+- --use-reconnect={{ if eq .Values.mode "istio" }}true{{ else }}false{{ end }}
 {{- end }}
 
 {{/*
@@ -71,7 +71,7 @@ Merbridge init args command
 {{- define "merbridge.cmd.init.args" -}}
 - sh
 - -c
-- nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee {{ .Values.merbridge.ipsFilePath }}
+- nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee {{ .Values.ipsFilePath }}
 {{- end }}
 
 {{/*

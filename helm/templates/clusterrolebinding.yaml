@@ -1,14 +1,14 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Values.merbridge.fullname }}
+  name: {{ .Values.fullname }}
   labels:
     {{- include "merbridge.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.merbridge.fullname }}
+  name: {{ .Values.fullname }}
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.merbridge.fullname }}
-  namespace: {{ .Values.merbridge.namespace }}
+  name: {{ .Values.fullname }}
+  namespace: {{ .Release.Namespace }}

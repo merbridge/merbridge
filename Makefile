@@ -26,10 +26,10 @@ format: format-c format-go
 helm: helm-linkerd helm-istio
 
 helm-linkerd:
-	helm template --set-string "merbridge.namespace=linkerd,merbridge.mode=linkerd" merbridge helm > deploy/all-in-one-linkerd.yaml
+	helm template --set-string "mode=linkerd" -n "linkerd" merbridge helm > deploy/all-in-one-linkerd.yaml
 
 helm-istio:
-	helm template merbridge helm > deploy/all-in-one.yaml
+	helm template -n "istio-system" merbridge helm > deploy/all-in-one.yaml
 
 helm-package:
 	helm package helm

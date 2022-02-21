@@ -10,11 +10,11 @@ If you want to install merbridge locally with Helm:
 
 ### Install Merbridge on Istio
 
-+ set merbridge.mode=istio to switch to Istio mode, default value is `istio`.
-+ set namespace where merbridge is going to install by --set merbridge.namespace, default value is `istio-system`.
++ set mode=istio to switch to Istio mode, default value is `istio`.
++ set namespace where merbridge is going to install by -n .
 
 ``` bash
-helm install merbridge helm
+helm install -n istio-system merbridge helm
 ```
 
 After excuting this command, you will see that:
@@ -36,11 +36,11 @@ The Merbridge [v0.4.0] has been installed in namespace [istio-system]. It will b
 
 ### Install Merbridge on Linkerd
 
-+ set merbridge.mode=linkerd to switch to linkerd mode
-+ set namespace where merbridge is going to install by --set merbridge.namespace
++ set mode=linkerd to switch to linkerd mode
++ set namespace where merbridge is going to install by -n .
 
 ``` bash
-helm install --set merbridge.mode=linkerd --set merbridge.namespace=linkerd merbridge helm
+helm install -n linkerd --set mode=linkerd merbridge helm
 ```
 
 ### Uninstall
