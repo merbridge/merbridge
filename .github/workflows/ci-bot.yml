@@ -1,0 +1,37 @@
+name: CI Bot
+on:
+  issue_comment:
+    types:
+      - created
+  pull_request_review_comment:
+    types:
+      - created
+
+env:
+  APPROVERS_PLUGINS: |-
+    merge
+  APPROVERS: |-
+    kebe7jun
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_REPOSITORY: ${{ github.repository }}
+  DETAILS: |-
+    <details>
+    <summary>Details</summary>
+    Instructions for interacting with me using comments are available here.
+    If you have questions or suggestions related to my behavior, please file an issue against the [gh-ci-bot](https://github.com/wzshiming/gh-ci-bot) repository.
+    </details>
+
+jobs:
+  pr_commented:
+    name: PR Commented
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: wzshiming/gh-ci-bot@master
+        env:
+          LOGIN: ${{ github.event.comment.user.login }}
+          MESSAGE: ${{ github.event.comment.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+          ISSUE_KIND: pr
+          TYPE: comment
