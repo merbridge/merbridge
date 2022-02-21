@@ -40,7 +40,7 @@ helm-package:
 
 # install helm
 helm-install:
-	curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+	which helm || curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 # check helm templates in Github Workflow
 # check if the generated yaml has been updated
