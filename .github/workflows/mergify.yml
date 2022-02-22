@@ -1,0 +1,11 @@
+---
+pull_request_rules:
+  - name: Automatic merge on CI success and review
+    conditions:
+    - or:
+      - approved-reviews-by=@merbridge/infra-maintainers
+      - approved-reviews-by=@merbridge/control-plane-maintainers
+    actions:
+      queue:
+        method: squash
+        name: default
