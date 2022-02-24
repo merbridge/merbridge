@@ -10,11 +10,10 @@ pull_request_rules:
         method: squash
   - name: Say hello to contributors
     conditions:
-      - and:
-        - -draft
+      - -draft
     actions:
       comment:
         message: |
-           Welcome to the Merbridge OpenSource Community!👏
-           
+           Welcome to the [Merbridge](https://github.com/merbridge/merbridge) OpenSource Community!👏
+
            We're delighted to have you onboard 💘
