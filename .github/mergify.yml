@@ -1,9 +1,3 @@
-queue_rules:
-  - name: default
-    conditions:
-      # Conditions to get out of the queue (= merged)
-      - approved-reviews-by=@merbridge/infra-maintainers
-      - approved-reviews-by=@merbridge/control-plane-maintainers
 pull_request_rules:
   - name: Automatic merge on CI success and review
     conditions:
@@ -12,6 +6,15 @@ pull_request_rules:
       - approved-reviews-by=@merbridge/infra-maintainers
       - approved-reviews-by=@merbridge/control-plane-maintainers
     actions:
-      queue:
+      merge:
         method: squash
-        name: default
+  - name: Say hello to contributors
+    conditions:
+      - and:
+        - -draft
+    actions:
+      comment:
+        message: |
+           Welcome to the Merbridge OpenSource Community!👏
+           
+           We're delighted to have you onboard 💘
