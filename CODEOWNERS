@@ -5,9 +5,12 @@
 /.gitignore         @merbridge/infra-maintainers
 /.golangci.yml      @merbridge/infra-maintainers
 /.clang-format      @merbridge/infra-maintainers
-/deploy             @merbridge/infra-maintainers
-/helm               @merbridge/infra-maintainers
-/cmd/               @merbridge/control-plane-maintainers
+/deploy/            @merbridge/infra-maintainers
+/helm/              @merbridge/infra-maintainers
+/scripts/           @merbridge/infra-maintainers
+/app/               @merbridge/control-plane-maintainers
+/config/            @merbridge/control-plane-maintainers
+/controller/        @merbridge/control-plane-maintainers
 /internal/          @merbridge/control-plane-maintainers
 /pkg/               @merbridge/control-plane-maintainers
 /go.*               @merbridge/control-plane-maintainers
