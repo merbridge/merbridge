@@ -18,7 +18,7 @@ limitations under the License.
 
 struct bpf_map __section("maps") cookie_original_dst = {
     .type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u32),
+    .key_size = sizeof(__u64),
     .value_size = sizeof(struct origin_info),
     .max_entries = 65535,
     .map_flags = 0,
