@@ -56,7 +56,7 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
             .dip = skops->remote_ip4,
             .dport = skops->remote_port >> 16,
         };
-        bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
+        bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_ANY);
         bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
     }
     return 0;
