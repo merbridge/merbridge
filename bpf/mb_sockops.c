@@ -23,12 +23,6 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
 {
     __u64 cookie = bpf_get_socket_cookie_ops(skops);
 
-    struct pair p = {
-        .sip = skops->local_ip4,
-        .sport = skops->local_port,
-        .dip = skops->remote_ip4,
-        .dport = skops->remote_port >> 16,
-    };
     void *dst = bpf_map_lookup_elem(&cookie_original_dst, &cookie);
     if (dst) {
         struct origin_info dd = *(struct origin_info *)dst;
@@ -56,14 +50,14 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
         }
         // get_sockopts can read pid and cookie,
         // we should write a new map named pair_original_dst
-        bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
+        struct pair p = {
+            .sip = skops->local_ip4,
+            .sport = skops->local_port,
+            .dip = skops->remote_ip4,
+            .dport = skops->remote_port >> 16,
+        };
+        bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_ANY);
         bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
-    } else {
-        if (skops->local_port == OUT_REDIRECT_PORT ||
-            skops->local_port == IN_REDIRECT_PORT ||
-            skops->remote_ip4 == 100663423) {
-            bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
-        }
     }
     return 0;
 }
@@ -75,7 +69,7 @@ __section("sockops") int mb_sockops(struct bpf_sock_ops *skops)
     op = skops->op;
 
     switch (op) {
-    case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
+    // case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
     case BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB:
         if (family == 2) { // AFI_NET, we dont include socket.h, because it may
                            // cause an import error.
