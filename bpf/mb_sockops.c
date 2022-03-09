@@ -25,7 +25,7 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
 
     struct pair p = {
         .sip = skops->local_ip4,
-        .sport = skops->local_port,
+        .sport = bpf_htons(skops->local_port),
         .dip = skops->remote_ip4,
         .dport = skops->remote_port >> 16,
     };
@@ -56,7 +56,7 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
         }
         // get_sockopts can read pid and cookie,
         // we should write a new map named pair_original_dst
-        bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_NOEXIST);
+        bpf_map_update_elem(&pair_original_dst, &p, &dd, BPF_ANY);
         bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
     } else {
         if (skops->local_port == OUT_REDIRECT_PORT ||
