@@ -38,7 +38,7 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             .dip = ctx->sk->src_ip4,
             .dport = bpf_htons(ctx->sk->src_port),
             .sip = ctx->sk->dst_ip4,
-            .sport = bpf_htons(ctx->sk->dst_port),
+            .sport = ctx->sk->dst_port,
         };
         struct origin_info *origin =
             bpf_map_lookup_elem(&pair_original_dst, &p);

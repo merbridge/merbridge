@@ -21,12 +21,12 @@ limitations under the License.
 __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
 {
     struct pair p = {
-        .sip = msg->local_ip4,
-        .sport = msg->local_port,
-        .dip = msg->remote_ip4,
-        .dport = msg->remote_port >> 16,
+        .dip = msg->local_ip4,
+        .dport = bpf_htons(msg->local_port),
+        .sip = msg->remote_ip4,
+        .sport = msg->remote_port >> 16,
     };
-    long ret = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, 0);
+    long ret = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, BPF_F_INGRESS);
     if (ret)
         debugf("redirect %d bytes with eBPF successfully", msg->size);
     return 1;
