@@ -46,11 +46,11 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
             // app call local, bypass.
             return 1;
         }
-        // app call others
-        debugf("call from user container: ip: 0x%x, port: %d", ctx->user_ip4,
-               bpf_htons(ctx->user_port));
-        // we need redirect it to envoy.
         __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+        // app call others
+        debugf("call from user container: cookie: %d, ip: 0x%x, port: %d",
+               cookie, ctx->user_ip4, bpf_htons(ctx->user_port));
+        // we need redirect it to envoy.
         struct origin_info origin = {
             .ip = ctx->user_ip4,
             .port = ctx->user_port,
@@ -72,9 +72,10 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         }
         ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
+        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
         // from envoy to others
-        debugf("call from sidecar container: ip: 0x%x, port: %d", ctx->user_ip4,
-               bpf_htons(ctx->user_port));
+        debugf("call from sidecar container: cookie: %d, ip: 0x%x, port: %d",
+               cookie, ctx->user_ip4, bpf_htons(ctx->user_port));
         __u32 ip = ctx->user_ip4;
         if (!bpf_map_lookup_elem(&local_pod_ips, &ip)) {
             // dst ip is not in this node, bypass
@@ -83,7 +84,6 @@ __section("cgroup/connect4") int mb_sock4_connect(struct bpf_sock_addr *ctx)
         }
         // dst ip is in this node, but not the current pod,
         // it is envoy to envoy connecting.
-        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
         struct origin_info origin = {
             .ip = ctx->user_ip4,
             .port = ctx->user_port,
