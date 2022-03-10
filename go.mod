@@ -8,7 +8,7 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.23.4
-	k8s.io/client-go v0.23.1
+	k8s.io/client-go v0.23.4
 )
 
 require (
