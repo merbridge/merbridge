@@ -51,13 +51,14 @@ jobs:
       run: make compile
   auto-merge:
     runs-on: ubuntu-20.04
-    needs: [compile-ebpf-test]
+    # needs: [compile-ebpf-test, go-unit-test]
+    permissions: write-all
     steps:
     - name: Auto Merge
-      run: gh pr merge --auto --squash ${{github.event.pull_request.html_url}}
+      run: |
+        gh pr merge --auto --squash ${{github.event.pull_request.html_url}}
       env:
-        PR_URL: ${{github.event.pull_request.html_url}}
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        GITHUB_TOKEN: ${{secrets.AUTO_MERGE_TOKEN}}
   docker-build:
     runs-on: ubuntu-latest
     needs: [compile-ebpf-test, go-unit-test]
