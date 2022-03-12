@@ -62,6 +62,9 @@ static __u64 (*bpf_map_update_elem)(struct bpf_map *map, const void *key,
 static struct bpf_sock *(*bpf_sk_lookup_tcp)(
     void *ctx, struct bpf_sock_tuple *tuple, __u32 tuple_size, __u64 netns,
     __u64 flags) = (void *)BPF_FUNC_sk_lookup_tcp;
+static struct bpf_sock *(*bpf_sk_lookup_udp)(
+    void *ctx, struct bpf_sock_tuple *tuple, __u32 tuple_size, __u64 netns,
+    __u64 flags) = (void *)BPF_FUNC_sk_lookup_udp;
 static long (*bpf_sk_release)(struct bpf_sock *sock) = (void *)
     BPF_FUNC_sk_release;
 static long (*bpf_sock_hash_update)(
@@ -100,16 +103,27 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
 
 #endif
 
-static inline int is_port_listen_current_ns(void *ctx, __u16 port)
+static inline int is_port_listen_current_ns(void *ctx, __u32 ip, __u16 port)
 {
 
     struct bpf_sock_tuple tuple = {};
-    // memset(&tuple.ipv4.sport, 0, sizeof(tuple.ipv4.sport));
-    // tuple.ipv4.saddr = 0;
-    // tuple.ipv4.sport = 0;
-    // tuple.ipv4.daddr = 0;
     tuple.ipv4.dport = bpf_htons(port);
+    tuple.ipv4.daddr = bpf_htonl(ip);
     struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
+                                           BPF_F_CURRENT_NETNS, 0);
+    if (s) {
+        bpf_sk_release(s);
+        return 1;
+    }
+    return 0;
+}
+
+static inline int is_port_listen_udp_current_ns(void *ctx, __u32 ip, __u16 port)
+{
+    struct bpf_sock_tuple tuple = {};
+    tuple.ipv4.dport = bpf_htons(port);
+    tuple.ipv4.daddr = bpf_htonl(ip);
+    struct bpf_sock *s = bpf_sk_lookup_udp(ctx, &tuple, sizeof(tuple.ipv4),
                                            BPF_F_CURRENT_NETNS, 0);
     if (s) {
         bpf_sk_release(s);

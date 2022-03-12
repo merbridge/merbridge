@@ -34,6 +34,10 @@ limitations under the License.
 #define SIDECAR_USER_ID 1337
 #endif
 
+#ifndef DNS_CAPTURE_PORT
+#define DNS_CAPTURE_PORT 15053
+#endif
+
 #elif MESH == LINKERD
 
 #ifndef OUT_REDIRECT_PORT
@@ -46,6 +50,10 @@ limitations under the License.
 
 #ifndef SIDECAR_USER_ID
 #define SIDECAR_USER_ID 2102
+#endif
+
+#ifndef DNS_CAPTURE_PORT
+#define DNS_CAPTURE_PORT 0 // todo fix me
 #endif
 
 #else
