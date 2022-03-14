@@ -13,4 +13,4 @@ if [ -z "$SKIP_INSTALL" ]; then
     rm -rf "${tmp}"
 fi
 
-istioctl install -y
+istioctl install -y $@

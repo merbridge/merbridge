@@ -36,7 +36,20 @@ jobs:
         make clean
     - name: install istio
       run: |
-        bash ./scripts/install-istio.sh
+        cat > /tmp/istio-config <<EOF
+        apiVersion: install.istio.io/v1alpha1
+        kind: IstioOperator
+        spec:
+          meshConfig:
+            defaultConfig:
+              proxyMetadata:
+                # Enable basic DNS proxying
+                ISTIO_META_DNS_CAPTURE: "true"
+                # Enable automatic address allocation, optional
+                ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+        EOF
+        bash ./scripts/install-istio.sh -f /tmp/istio-config
+        rm -f /tmp/istio-config
     - name: deploy test apps
       run: |
         kubectl label ns default istio-injection=enabled
@@ -53,6 +66,11 @@ jobs:
         while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
     - name: test connect with Merbridge
       run: |
+        set -x
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
+        sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
         # check if eBPF works
-        [ "$(sudo cat /sys/kernel/debug/tracing/trace | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /sys/kernel/debug/tracing/trace; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 10) || exit 0
+        [ "$(sudo cat /tmp/trace-log | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 11)
+        [ "$(sudo cat /tmp/trace-log | grep 'bytes with eBPF successfully')" = "" ] && (echo eBPF redirect progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 12)
+        [ "$(sudo cat /tmp/trace-log | grep 'successfully deal DNS redirect query')" = "" ] && (echo DNS Proxy not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 13)
+        sudo rm -f /tmp/trace-log

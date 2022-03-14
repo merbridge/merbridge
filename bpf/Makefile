@@ -52,7 +52,7 @@ ifeq ($(CGROUP2_PATH),)
 $(error It looks like your system does not have cgroupv2 enabled, or the automatic recognition fails. Please enable cgroupv2, or specify the path of cgroupv2 manually via CGROUP2_PATH parameter.)
 endif
 
-TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o
+TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o mb_sendmsg.o mb_recvmsg.o
 
 init-cgroup:
 	[ -d $(PROG_MOUNT_PATH)/ ] || sudo mount -t bpf bpf $(PROG_MOUNT_PATH)
@@ -139,8 +139,26 @@ clean-bind:
 	sudo bpftool cgroup detach $(CGROUP2_PATH) bind4 pinned $(PROG_MOUNT_PATH)/bind
 	sudo rm -rf $(PROG_MOUNT_PATH)/bind
 
+load-sendmsg: load-map-cookie_original_dst
+	sudo bpftool prog load mb_sendmsg.o $(PROG_MOUNT_PATH)/sendmsg \
+		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst
+	sudo bpftool cgroup attach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg
+
+clean-sendmsg:
+	sudo bpftool cgroup detach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg
+	sudo rm -rf $(PROG_MOUNT_PATH)/sendmsg
+
+load-recvmsg: load-map-cookie_original_dst
+	sudo bpftool prog load mb_recvmsg.o $(PROG_MOUNT_PATH)/recvmsg \
+		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst
+	sudo bpftool cgroup attach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg
+
+clean-recvmsg:
+	sudo bpftool cgroup detach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg
+	sudo rm -rf $(PROG_MOUNT_PATH)/recvmsg
+
 load: compile load-from-obj
 
-load-from-obj: load-connect load-sockops load-getsock load-redir load-bind
+load-from-obj: load-connect load-sockops load-getsock load-redir load-bind load-sendmsg load-recvmsg
 
-clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind
+clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind clean-sendmsg clean-recvmsg
