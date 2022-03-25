@@ -4,7 +4,7 @@ CFLAGS=-O2 -g  -Wall -target bpf -I/usr/include/$(shell uname -m)-linux-gnu
 PROG_MOUNT_PATH=/sys/fs/bpf
 
 MACROS:=
-DEBUG ?= 
+DEBUG ?=
 
 MESH_MODE ?= istio
 
@@ -34,9 +34,9 @@ if($(KREV) < $(3)) {print 0} else { print 1 } \
 }}}}}' \
 )
 
-# See https://nakryiko.com/posts/bpf-tips-printk/, kernel will auto print newline if version gather than 5.9.0
+# See https://nakryiko.com/posts/bpf-tips-printk/, kernel will auto print newline if version greater than 5.9.0
 ifneq ($(call kver_ge,5,8,999),1)
-MACROS:= $(MACROS) -DPRINTNL # kernel version less 
+MACROS:= $(MACROS) -DPRINTNL # kernel version less
 endif
 
 ifeq ($(DEBUG),1)
@@ -115,7 +115,7 @@ load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-proce
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip
 	sudo bpftool cgroup attach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect
 
-clean-connect: 
+clean-connect:
 	sudo bpftool cgroup detach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect
 	sudo rm $(PROG_MOUNT_PATH)/connect
 
