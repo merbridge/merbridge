@@ -66,40 +66,40 @@ func createLocalIPController(client kubernetes.Interface) pods.Watcher {
 	return pods.Watcher{
 		Client:          client,
 		CurrentNodeName: locaName,
-		OnAddFunc:       addFunc,
+		OnAddFunc:       nil,
 		OnUpdateFunc:    updateFunc,
 		OnDeleteFunc:    deleteFunc,
 	}
 }
 
-func addFunc(obj interface{}) {
-	if pod, ok := obj.(*v1.Pod); ok {
-		if config.Mode == config.ModeIstio && !pods.IsIstioInjectedSidecar(pod) {
-			return
-		}
-		if config.Mode == config.ModeLinkerd && !pods.IsLinkerdInjectedSidecar(pod) {
-			return
-		}
-		log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
-		podHostIP := pod.Status.HostIP
-		if config.CurrentNodeIP == "" {
-			if linux.IsCurrentNodeIP(podHostIP, config.IpsFile) {
-				config.CurrentNodeIP = podHostIP
-			}
-		}
-		if podHostIP == config.CurrentNodeIP || config.IsKind {
-			_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-			log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
-			err := ebpfs.GetPinnedMap().Update(_ip, uint32(0), ebpf.UpdateAny)
-			if err != nil {
-				log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
-			}
+func updateFunc(old, cur interface{}) {
+	oldPod, ok := old.(*v1.Pod)
+	if !ok {
+		return
+	}
+	curPod, ok := cur.(*v1.Pod)
+	if !ok {
+		return
+	}
+	if ignore(oldPod, curPod) {
+		return
+	}
+
+	log.Debugf("got pod updated %s/%s", curPod.Namespace, curPod.Name)
+	podHostIP := curPod.Status.HostIP
+	if config.CurrentNodeIP == "" {
+		if linux.IsCurrentNodeIP(podHostIP, config.IpsFile) {
+			config.CurrentNodeIP = podHostIP
 		}
 	}
-}
-
-func updateFunc(old, newest interface{}) {
-	addFunc(newest)
+	if podHostIP == config.CurrentNodeIP || config.IsKind {
+		_ip, _ := linux.IP2Linux(curPod.Status.PodIP)
+		log.Infof("update local_pod_ips with ip: %s", curPod.Status.PodIP)
+		err := ebpfs.GetPinnedMap().Update(_ip, uint32(0), ebpf.UpdateAny)
+		if err != nil {
+			log.Errorf("update local_pod_ips %s error: %v", curPod.Status.PodIP, err)
+		}
+	}
 }
 
 func deleteFunc(obj interface{}) {
@@ -108,4 +108,18 @@ func deleteFunc(obj interface{}) {
 		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
 		_ = ebpfs.GetPinnedMap().Delete(_ip)
 	}
+}
+
+func ignore(oldPod, curPod *v1.Pod) bool {
+	if oldPod.Status.PodIP == curPod.Status.PodIP {
+		// only care about ip changes
+		return true
+	}
+	if config.Mode == config.ModeIstio && !pods.IsIstioInjectedSidecar(curPod) {
+		return true
+	}
+	if config.Mode == config.ModeLinkerd && !pods.IsLinkerdInjectedSidecar(curPod) {
+		return true
+	}
+	return false
 }
