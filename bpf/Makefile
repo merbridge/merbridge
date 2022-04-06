@@ -60,6 +60,9 @@ init-cgroup:
 %.o: %.c
 	$(CC) $(CFLAGS) $(MACROS) -c $< -o $@
 
+generate-compilation-database:
+	CC="$(CC)" CFLAGS="$(CFLAGS)" MACROS="$(MACROS)" scripts/generate-compilation-database.sh | tee compile_commands.json
+
 compile: $(TARGETS)
 
 compile-clean:
