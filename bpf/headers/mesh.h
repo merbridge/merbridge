@@ -38,6 +38,11 @@ limitations under the License.
 #define DNS_CAPTURE_PORT 15053
 #endif
 
+// 127.0.0.6 (network order)
+static __u32 envoy_ip = 100663423;
+// ::6 (network order)
+static __u32 envoy_ip6[4] = {0, 0, 0, 6 << 24};
+
 #elif MESH == LINKERD
 
 #ifndef OUT_REDIRECT_PORT
