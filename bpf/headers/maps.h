@@ -29,7 +29,7 @@ struct bpf_map __section("maps") cookie_original_dst = {
 // only contains injected pods.
 struct bpf_map __section("maps") local_pod_ips = {
     .type = BPF_MAP_TYPE_HASH,
-    .key_size = sizeof(__u32),
+    .key_size = sizeof(__u32) * 4,
     .value_size = sizeof(__u32),
     .max_entries = 1024,
     .map_flags = 0,
@@ -39,7 +39,7 @@ struct bpf_map __section("maps") local_pod_ips = {
 struct bpf_map __section("maps") process_ip = {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
+    .value_size = sizeof(__u32) * 4,
     .max_entries = 1024,
     .map_flags = 0,
 };

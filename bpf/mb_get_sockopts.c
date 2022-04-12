@@ -17,6 +17,7 @@ limitations under the License.
 #include "headers/maps.h"
 #include <linux/bpf.h>
 #include <linux/in.h>
+#include <linux/in6.h>
 
 #define MAX_OPS_BUFF_LENGTH 4096
 #define SO_ORIGINAL_DST 80
@@ -33,15 +34,20 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
     }
     // envoy will call getsockopt with SO_ORIGINAL_DST, we should rewrite it to
     // return original dst info.
-    if (ctx->optname == SO_ORIGINAL_DST) {
-        struct pair p = {
-            .dip = ctx->sk->src_ip4,
-            .dport = bpf_htons(ctx->sk->src_port),
-            .sip = ctx->sk->dst_ip4,
-            .sport = ctx->sk->dst_port,
-        };
-        struct origin_info *origin =
-            bpf_map_lookup_elem(&pair_original_dst, &p);
+    if (ctx->optname != SO_ORIGINAL_DST) {
+        return 1;
+    }
+    struct pair p;
+    memset(&p, 0, sizeof(p));
+    p.dport = bpf_htons(ctx->sk->src_port);
+    p.sport = ctx->sk->dst_port;
+    struct origin_info *origin;
+    switch (ctx->sk->family) {
+#if ENABLE_IPV4
+    case 2: // ipv4
+        set_ipv4(p.dip, ctx->sk->src_ip4);
+        set_ipv4(p.sip, ctx->sk->dst_ip4);
+        origin = bpf_map_lookup_elem(&pair_original_dst, &p);
         if (origin) {
             // rewrite original_dst
             ctx->optlen = (__s32)sizeof(struct sockaddr_in);
@@ -53,11 +59,42 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             ctx->retval = 0;
             struct sockaddr_in sa = {
                 .sin_family = ctx->sk->family,
-                .sin_addr.s_addr = origin->ip,
+                .sin_addr.s_addr = get_ipv4(origin->ip),
                 .sin_port = origin->port,
             };
             *(struct sockaddr_in *)ctx->optval = sa;
         }
+        break;
+#endif
+#if ENABLE_IPV6
+    case 10: // ipv6
+        set_ipv6(p.dip, ctx->sk->src_ip6);
+        set_ipv6(p.sip, ctx->sk->dst_ip6);
+        if (ipv6_equal(p.sip, localhost6)) {
+            p.ns_cookie = bpf_get_netns_cookie(ctx);
+        }
+        origin = bpf_map_lookup_elem(&pair_original_dst, &p);
+        if (origin) {
+            // rewrite original_dst
+            ctx->optlen = (__s32)sizeof(struct sockaddr_in6);
+            if ((void *)((struct sockaddr_in6 *)ctx->optval + 1) >
+                ctx->optval_end) {
+                printk("optname: %d: invalid getsockopt optval", ctx->optname);
+                return 1;
+            }
+            ctx->retval = 0;
+            if ((void *)((struct sockaddr_in6 *)ctx->optval + 1) >
+                ctx->optval_end) {
+                printk("optname: %d: invalid getsockopt optval", ctx->optname);
+                return 1;
+            }
+            struct sockaddr_in6 *sa = (struct sockaddr_in6 *)ctx->optval;
+            sa->sin6_family = ctx->sk->family;
+            sa->sin6_port = origin->port;
+            set_ipv6(sa->sin6_addr.in6_u.u6_addr32, origin->ip);
+        }
+        break;
+#endif
     }
     return 1;
 }

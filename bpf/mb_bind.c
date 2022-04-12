@@ -21,6 +21,7 @@ limitations under the License.
 // this prog hook linkerd bind OUTPUT_LISTENER
 // which will makes the listen address change from 127.0.0.1:4140 to
 // 0.0.0.0:4140
+#if ENABLE_IPV4
 __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
 {
 #if MESH != LINKERD
@@ -28,7 +29,7 @@ __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
     return 1;
 #endif
 
-    if (ctx->user_ip4 == 0x0100007f &&
+    if (ctx->user_ip4 == localhost &&
         ctx->user_port == bpf_htons(OUT_REDIRECT_PORT)) {
         __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
         if (uid == SIDECAR_USER_ID) {
@@ -41,6 +42,7 @@ __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
     }
     return 1;
 }
+#endif
 
 char ____license[] __section("license") = "GPL";
 int _version __section("version") = 1;

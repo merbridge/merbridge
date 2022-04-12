@@ -16,6 +16,21 @@ else
 $(error MESH_MODE $(MESH_MODE) isn't supported)
 endif
 
+ENABLE_IPV4 ?= true
+ENABLE_IPV6 ?= false
+
+ifeq ($(ENABLE_IPV4),true)
+	MACROS:= $(MACROS) -DENABLE_IPV4=1
+else
+	MACROS:= $(MACROS) -DENABLE_IPV4=0
+endif
+
+ifeq ($(ENABLE_IPV6),true)
+	MACROS:= $(MACROS) -DENABLE_IPV6=1
+else
+	MACROS:= $(MACROS) -DENABLE_IPV6=0
+endif
+
 # see https://stackoverflow.com/questions/15063298/how-to-check-kernel-version-in-makefile
 KVER = $(shell uname -r)
 KMAJ = $(shell echo $(KVER) | \
@@ -70,19 +85,19 @@ compile-clean:
 
 # Map
 load-map-cookie_original_dst:
-	[ -f $(PROG_MOUNT_PATH)/cookie_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cookie_original_dst type lru_hash key 8 value 12 entries 65535 name cookie_original_dst
+	[ -f $(PROG_MOUNT_PATH)/cookie_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cookie_original_dst type lru_hash key 8 value 24 entries 65535 name cookie_original_dst
 
 load-map-local_pod_ips:
-	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 4 value 4 entries 1024 name local_pod_ips
+	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 16 value 4 entries 1024 name local_pod_ips
 
 load-map-process_ip:
-	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
+	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 16 entries 1024 name process_ip
 
 load-map-pair_original_dst:
-	[ -f $(PROG_MOUNT_PATH)/pair_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/pair_original_dst type lru_hash key 12 value 12 entries 65535 name pair_original_dst
+	[ -f $(PROG_MOUNT_PATH)/pair_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/pair_original_dst type lru_hash key 48 value 24 entries 65535 name pair_original_dst
 
 load-map-sock_pair_map:
-	[ -f $(PROG_MOUNT_PATH)/sock_pair_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/sock_pair_map type sockhash key 12 value 4 entries 65535 name sock_pair_map
+	[ -f $(PROG_MOUNT_PATH)/sock_pair_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/sock_pair_map type sockhash key 48 value 4 entries 65535 name sock_pair_map
 
 
 clean-maps:
@@ -112,15 +127,25 @@ clean-redir:
 	sudo rm $(PROG_MOUNT_PATH)/redir
 
 load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip
-	sudo bpftool prog load mb_connect.o $(PROG_MOUNT_PATH)/connect \
+	sudo bpftool prog loadall mb_connect.o $(PROG_MOUNT_PATH)/connect \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip
-	sudo bpftool cgroup attach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect
+ifeq ($(ENABLE_IPV4),true)
+	sudo bpftool cgroup attach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect/cgroup_connect4
+endif
+ifeq ($(ENABLE_IPV6),true)
+	sudo bpftool cgroup attach $(CGROUP2_PATH) connect6 pinned $(PROG_MOUNT_PATH)/connect/cgroup_connect6
+endif
 
-clean-connect:
-	sudo bpftool cgroup detach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect
-	sudo rm $(PROG_MOUNT_PATH)/connect
+clean-connect: 
+ifeq ($(ENABLE_IPV4),true)
+	sudo bpftool cgroup detach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect/cgroup_connect4
+endif
+ifeq ($(ENABLE_IPV6),true)
+	sudo bpftool cgroup detach $(CGROUP2_PATH) connect6 pinned $(PROG_MOUNT_PATH)/connect/cgroup_connect6
+endif
+	sudo rm -rf $(PROG_MOUNT_PATH)/connect
 
 load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_original_dst load-map-sock_pair_map
 	sudo bpftool prog load mb_sockops.o $(PROG_MOUNT_PATH)/sockops \
@@ -135,29 +160,53 @@ clean-sockops:
 	sudo rm -rf $(PROG_MOUNT_PATH)/sockops
 
 load-bind:
+ifeq ($(ENABLE_IPV4),true)
 	sudo bpftool prog load mb_bind.o $(PROG_MOUNT_PATH)/bind
 	sudo bpftool cgroup attach $(CGROUP2_PATH) bind4 pinned $(PROG_MOUNT_PATH)/bind
+endif
 
 clean-bind:
+ifeq ($(ENABLE_IPV4),true)
 	sudo bpftool cgroup detach $(CGROUP2_PATH) bind4 pinned $(PROG_MOUNT_PATH)/bind
 	sudo rm -rf $(PROG_MOUNT_PATH)/bind
+endif
 
 load-sendmsg: load-map-cookie_original_dst
-	sudo bpftool prog load mb_sendmsg.o $(PROG_MOUNT_PATH)/sendmsg \
+	sudo bpftool prog loadall mb_sendmsg.o $(PROG_MOUNT_PATH)/sendmsg \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst
-	sudo bpftool cgroup attach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg
+ifeq ($(ENABLE_IPV4),true)
+	sudo bpftool cgroup attach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg/cgroup_sendmsg4
+endif
+ifeq ($(ENABLE_IPV6),true)
+	sudo bpftool cgroup attach $(CGROUP2_PATH) sendmsg6 pinned $(PROG_MOUNT_PATH)/sendmsg/cgroup_sendmsg6
+endif
 
 clean-sendmsg:
-	sudo bpftool cgroup detach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg
+ifeq ($(ENABLE_IPV4),true)
+	sudo bpftool cgroup detach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg/cgroup_sendmsg4
+endif
+ifeq ($(ENABLE_IPV6),true)
+	sudo bpftool cgroup detach $(CGROUP2_PATH) sendmsg6 pinned $(PROG_MOUNT_PATH)/sendmsg/cgroup_sendmsg6
+endif
 	sudo rm -rf $(PROG_MOUNT_PATH)/sendmsg
 
 load-recvmsg: load-map-cookie_original_dst
-	sudo bpftool prog load mb_recvmsg.o $(PROG_MOUNT_PATH)/recvmsg \
+	sudo bpftool prog loadall mb_recvmsg.o $(PROG_MOUNT_PATH)/recvmsg \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst
-	sudo bpftool cgroup attach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg
+ifeq ($(ENABLE_IPV4),true)
+	sudo bpftool cgroup attach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg/cgroup_recvmsg4
+endif
+ifeq ($(ENABLE_IPV6),true)
+	sudo bpftool cgroup attach $(CGROUP2_PATH) recvmsg6 pinned $(PROG_MOUNT_PATH)/recvmsg/cgroup_recvmsg6
+endif
 
 clean-recvmsg:
-	sudo bpftool cgroup detach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg
+ifeq ($(ENABLE_IPV4),true)
+	sudo bpftool cgroup detach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg/cgroup_recvmsg4
+endif
+ifeq ($(ENABLE_IPV6),true)
+	sudo bpftool cgroup detach $(CGROUP2_PATH) recvmsg6 pinned $(PROG_MOUNT_PATH)/recvmsg/cgroup_recvmsg6
+endif
 	sudo rm -rf $(PROG_MOUNT_PATH)/recvmsg
 
 load: compile load-from-obj

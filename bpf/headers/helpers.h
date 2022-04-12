@@ -19,6 +19,14 @@ limitations under the License.
 #include <linux/swab.h>
 #include <linux/types.h>
 
+#ifndef ENABLE_IPV4
+#define ENABLE_IPV4 1
+#endif
+
+#ifndef ENABLE_IPV6
+#define ENABLE_IPV6 0
+#endif
+
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define bpf_htons(x) __builtin_bswap16(x)
 #define bpf_htonl(x) __builtin_bswap32(x)
@@ -54,6 +62,10 @@ static __u64 (*bpf_get_socket_cookie_ops)(struct bpf_sock_ops *skops) = (void *)
     BPF_FUNC_get_socket_cookie;
 static __u64 (*bpf_get_socket_cookie_addr)(struct bpf_sock_addr *ctx) = (void *)
     BPF_FUNC_get_socket_cookie;
+// see https://github.com/libbpf/libbpf/blob/v0.7.0/src/bpf_helper_defs.h#L2943
+// only works if kernel version >= 5.15
+static __u64 (*bpf_get_netns_cookie)(void *ctx) = (void *)122;
+
 static void *(*bpf_map_lookup_elem)(struct bpf_map *map, const void *key) =
     (void *)BPF_FUNC_map_lookup_elem;
 static __u64 (*bpf_map_update_elem)(struct bpf_map *map, const void *key,
@@ -103,12 +115,32 @@ static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
 
 #endif
 
+#ifndef memset
+#define memset(x, y, z) __builtin_memset(x, y, z)
+#endif
+
+#if ENABLE_IPV4
+static __u32 ip_zero = 0;
+// 127.0.0.1 (network order)
+static __u32 localhost = 16777343;
+
+static inline __u32 get_ipv4(__u32 *ip) { return ip[3]; }
+
+static inline void set_ipv4(__u32 *dst, __u32 src)
+{
+    dst[0] = 0;
+    dst[1] = 0;
+    dst[2] = 0;
+    dst[3] = src;
+}
+
+static inline int ipv4_equal(__u32 *a, __u32 b) { return get_ipv4(a) == b; }
+
 static inline int is_port_listen_current_ns(void *ctx, __u32 ip, __u16 port)
 {
-
     struct bpf_sock_tuple tuple = {};
     tuple.ipv4.dport = bpf_htons(port);
-    tuple.ipv4.daddr = bpf_htonl(ip);
+    tuple.ipv4.daddr = ip;
     struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
                                            BPF_F_CURRENT_NETNS, 0);
     if (s) {
@@ -122,7 +154,7 @@ static inline int is_port_listen_udp_current_ns(void *ctx, __u32 ip, __u16 port)
 {
     struct bpf_sock_tuple tuple = {};
     tuple.ipv4.dport = bpf_htons(port);
-    tuple.ipv4.daddr = bpf_htonl(ip);
+    tuple.ipv4.daddr = ip;
     struct bpf_sock *s = bpf_sk_lookup_udp(ctx, &tuple, sizeof(tuple.ipv4),
                                            BPF_F_CURRENT_NETNS, 0);
     if (s) {
@@ -131,18 +163,68 @@ static inline int is_port_listen_udp_current_ns(void *ctx, __u32 ip, __u16 port)
     }
     return 0;
 }
+#endif
+
+#if ENABLE_IPV6
+static __u32 ip_zero6[4] = {0, 0, 0, 0};
+// ::1 (network order)
+static __u32 localhost6[4] = {0, 0, 0, 1 << 24};
+
+static inline void set_ipv6(__u32 *dst, __u32 *src)
+{
+    dst[0] = src[0];
+    dst[1] = src[1];
+    dst[2] = src[2];
+    dst[3] = src[3];
+}
+
+static inline int ipv6_equal(__u32 *a, __u32 *b)
+{
+    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3];
+}
+
+static inline int is_port_listen_current_ns6(void *ctx, __u32 *ip, __u16 port)
+{
+    struct bpf_sock_tuple tuple = {};
+    tuple.ipv6.dport = bpf_htons(port);
+    set_ipv6(tuple.ipv6.daddr, ip);
+    struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv6),
+                                           BPF_F_CURRENT_NETNS, 0);
+    if (s) {
+        bpf_sk_release(s);
+        return 1;
+    }
+    return 0;
+}
+
+static inline int is_port_listen_udp_current_ns6(void *ctx, __u32 *ip,
+                                                 __u16 port)
+{
+    struct bpf_sock_tuple tuple = {};
+    tuple.ipv6.dport = bpf_htons(port);
+    set_ipv6(tuple.ipv6.daddr, ip);
+    struct bpf_sock *s = bpf_sk_lookup_udp(ctx, &tuple, sizeof(tuple.ipv6),
+                                           BPF_F_CURRENT_NETNS, 0);
+    if (s) {
+        bpf_sk_release(s);
+        return 1;
+    }
+    return 0;
+}
+#endif
 
 struct origin_info {
     __u32 pid;
-    __u32 ip;
+    __u32 ip[4];
     __u16 port;
     // last bit means that ip of process is detected.
     __u16 flags;
 };
 
 struct pair {
-    __u32 sip;
-    __u32 dip;
+    __u32 sip[4];
+    __u32 dip[4];
     __u16 sport;
     __u16 dport;
+    __u64 ns_cookie;
 };
