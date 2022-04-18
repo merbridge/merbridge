@@ -16,6 +16,8 @@ limitations under the License.
 #pragma once
 #include "helpers.h"
 
+#define XDP_ORIGIN_FLAG 0b00001000
+
 struct bpf_map __section("maps") cookie_original_dst = {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .key_size = sizeof(__u64),
@@ -30,7 +32,7 @@ struct bpf_map __section("maps") cookie_original_dst = {
 struct bpf_map __section("maps") local_pod_ips = {
     .type = BPF_MAP_TYPE_HASH,
     .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
+    .value_size = sizeof(struct pod_config),
     .max_entries = 1024,
     .map_flags = 0,
 };

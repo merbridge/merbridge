@@ -59,6 +59,8 @@ static void *(*bpf_map_lookup_elem)(struct bpf_map *map, const void *key) =
 static __u64 (*bpf_map_update_elem)(struct bpf_map *map, const void *key,
                                     const void *value, __u64 flags) = (void *)
     BPF_FUNC_map_update_elem;
+static __u64 (*bpf_map_delete_elem)(struct bpf_map *map, const void *key) =
+    (void *)BPF_FUNC_map_delete_elem;
 static struct bpf_sock *(*bpf_sk_lookup_tcp)(
     void *ctx, struct bpf_sock_tuple *tuple, __u32 tuple_size, __u64 netns,
     __u64 flags) = (void *)BPF_FUNC_sk_lookup_tcp;
@@ -145,4 +147,23 @@ struct pair {
     __u32 dip;
     __u16 sport;
     __u16 dport;
+};
+
+#define MAX_ITEM_LEN 10
+
+struct cidr {
+    __u32 net;
+    __u8 mask;
+    __u8 __pad[3];
+};
+
+struct pod_config {
+    __u16 status_port;
+    __u16 __pad;
+    struct cidr exclude_out_ranges[MAX_ITEM_LEN];
+    struct cidr include_out_ranges[MAX_ITEM_LEN];
+    __u16 include_in_ports[MAX_ITEM_LEN];
+    __u16 include_out_ports[MAX_ITEM_LEN];
+    __u16 exclude_in_ports[MAX_ITEM_LEN];
+    __u16 exclude_out_ports[MAX_ITEM_LEN];
 };
