@@ -17,9 +17,13 @@ package localip
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -72,6 +76,25 @@ func createLocalIPController(client kubernetes.Interface) pods.Watcher {
 	}
 }
 
+const MaxItemLen = 10 // todo changeme
+
+type cidr struct {
+	net  uint32 // network order
+	mask uint8
+	_    [3]uint8 // pad
+}
+
+type podConfig struct {
+	statusPort       uint16
+	_                uint16 // pad
+	excludeOutRanges [MaxItemLen]cidr
+	includeOutRanges [MaxItemLen]cidr
+	includeInPorts   [MaxItemLen]uint16
+	includeOutPorts  [MaxItemLen]uint16
+	excludeInPorts   [MaxItemLen]uint16
+	excludeOutPorts  [MaxItemLen]uint16
+}
+
 func addFunc(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok || len(pod.Status.PodIP) == 0 {
@@ -93,9 +116,127 @@ func addFunc(obj interface{}) {
 	if podHostIP == config.CurrentNodeIP || config.IsKind {
 		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
 		log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
-		err := ebpfs.GetPinnedMap().Update(_ip, uint32(0), ebpf.UpdateAny)
+		p := podConfig{}
+		parsePodConfigFromAnnotations(pod.Annotations, &p)
+		err := ebpfs.GetPinnedMap().Update(_ip, &p, ebpf.UpdateAny)
 		if err != nil {
 			log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
+		}
+	}
+}
+
+func getPortsFromString(v string) []uint16 {
+	var ports []uint16
+	for _, vv := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(vv); p != "" {
+			port, err := strconv.ParseUint(vv, 10, 16)
+			if err == nil {
+				ports = append(ports, uint16(port))
+			}
+		}
+	}
+	return ports
+}
+
+func getIPRangesFromString(v string) []cidr {
+	var ranges []cidr
+	for _, vv := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(vv); p != "" {
+			_, n, err := net.ParseCIDR(vv)
+			if err != nil {
+				log.Errorf("parse cidr from %s error: %v", vv, err)
+				continue
+			}
+			c := cidr{}
+			ones, _ := n.Mask.Size()
+			c.mask = uint8(ones)
+			if len(n.IP) == 16 {
+				c.net = *(*uint32)(unsafe.Pointer(&n.IP[12]))
+			} else {
+				c.net = *(*uint32)(unsafe.Pointer(&n.IP[0]))
+			}
+			ranges = append(ranges, c)
+		}
+	}
+	return ranges
+}
+
+func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig) {
+	statusPort := 15021
+	if v, ok := annotations["status.sidecar.istio.io/port"]; ok {
+		vv, err := strconv.ParseUint(v, 10, 16)
+		if err == nil {
+			statusPort = int(vv)
+		}
+	}
+	pod.statusPort = uint16(statusPort)
+	excludeInboundPorts := []uint16{15090, 15006, 15001, 15000} // todo changeme
+	if v, ok := annotations["traffic.sidecar.istio.io/excludeInboundPorts"]; ok {
+		excludeInboundPorts = append(excludeInboundPorts, getPortsFromString(v)...)
+	}
+	if len(excludeInboundPorts) > 0 {
+		for i, p := range excludeInboundPorts {
+			if i >= MaxItemLen {
+				break
+			}
+			pod.excludeInPorts[i] = p
+		}
+	}
+	if v, ok := annotations["traffic.sidecar.istio.io/excludeOutboundPorts"]; ok {
+		excludeOutboundPorts := getPortsFromString(v)
+		if len(excludeOutboundPorts) > 0 {
+			for i, p := range excludeOutboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.excludeOutPorts[i] = p
+			}
+		}
+	}
+
+	if v, ok := annotations["traffic.sidecar.istio.io/includeInboundPorts"]; ok {
+		includeInboundPorts := getPortsFromString(v)
+		if len(includeInboundPorts) > 0 {
+			for i, p := range includeInboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.includeInPorts[i] = p
+			}
+		}
+	}
+	if v, ok := annotations["traffic.sidecar.istio.io/includeInboundPorts"]; ok {
+		includeOutboundPorts := getPortsFromString(v)
+		if len(includeOutboundPorts) > 0 {
+			for i, p := range includeOutboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.includeOutPorts[i] = p
+			}
+		}
+	}
+
+	if v, ok := annotations["traffic.sidecar.istio.io/excludeOutboundIPRanges"]; ok {
+		excludeOutboundIPRanges := getIPRangesFromString(v)
+		if len(excludeOutboundIPRanges) > 0 {
+			for i, p := range excludeOutboundIPRanges {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.excludeOutRanges[i] = p
+			}
+		}
+	}
+	if v, ok := annotations["traffic.sidecar.istio.io/includeOutboundIPRanges"]; ok {
+		includeOutboundIPRanges := getIPRangesFromString(v)
+		if len(includeOutboundIPRanges) > 0 {
+			for i, p := range includeOutboundIPRanges {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.includeOutRanges[i] = p
+			}
 		}
 	}
 }

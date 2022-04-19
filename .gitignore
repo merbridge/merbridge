@@ -24,3 +24,4 @@ compile_commands.json
 
 # the clangd generated code indexes for code navigation
 .cache
+.vscode
