@@ -89,7 +89,6 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
     }
     if (curr_pod_ip == 0) {
         debugf("get current pod ip error");
-        return 1;
     }
     if (uid != SIDECAR_USER_ID) {
         if ((ctx->user_ip4 & 0xff) == 0x7f) {
@@ -156,7 +155,7 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
         };
         if (curr_pod_ip) {
             origin.flags |= 1;
-            if (curr_pod_ip == ip) {
+            if (curr_pod_ip != ip) {
                 // call other pod, need redirect port.
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
             }
