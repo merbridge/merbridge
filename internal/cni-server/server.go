@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+
 	"github.com/merbridge/merbridge/config/constants"
 )
 
@@ -77,9 +78,9 @@ func (s *server) Start() error {
 		ReadTimeout:  15 * time.Second,
 	}
 	go func() {
-		go ss.Serve(l)
+		go ss.Serve(l) // nolint: errcheck
 		<-s.stop
-		ss.Shutdown(context.Background())
+		_ = ss.Shutdown(context.Background())
 	}()
 	return nil
 }

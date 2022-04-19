@@ -27,9 +27,10 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	cniv1 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/containernetworking/cni/pkg/version"
-	"github.com/merbridge/merbridge/config/constants"
 	log "github.com/sirupsen/logrus"
 	"istio.io/istio/cni/pkg/plugin"
+
+	"github.com/merbridge/merbridge/config/constants"
 )
 
 // parseConfig parses the supplied configuration (and prevResult) from stdin.

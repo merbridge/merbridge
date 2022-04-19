@@ -33,10 +33,11 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/merbridge/merbridge/pkg/linux"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"istio.io/istio/cni/pkg/plugin"
+
+	"github.com/merbridge/merbridge/pkg/linux"
 )
 
 func netnsEthsGetIPs(nsname string) []net.Addr {
@@ -75,7 +76,6 @@ func netnsPairEthDo(nsname string, f func(name string, index int) error) error {
 	err = netNS.Do(func(_ ns.NetNS) error {
 		ifaces, _ := net.Interfaces()
 		for _, iface := range ifaces {
-			// fmt.Printf("if %+v\n", iface)
 			if iface.Name == "lo" {
 				continue
 			}
@@ -191,7 +191,13 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 		l, err := lc.Listen(context.Background(), "tcp", "0.0.0.0:39807")
 		go func() {
 			// keep listener
-			l.Accept()
+			for {
+				_, err := l.Accept()
+				if err != nil {
+					// only break loop if error.
+					break
+				}
+			}
 		}()
 		return err
 	})
@@ -200,7 +206,7 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 	}
 	err = netnsPairEthDo(args.Netns, func(name string, index int) error {
 		xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
-		// xdp, err := ebpf.NewProgramFromID(1595)
+		// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
 		if err != nil {
 			return err
 		}
@@ -214,7 +220,7 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 			return err
 		}
 		p := getXDPPinnedPath(s.bpfMountPath, string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME), name)
-		os.MkdirAll(p, os.ModePerm)
+		_ = os.MkdirAll(p, os.ModePerm)
 		return l.Pin(path.Join(p, "mb_xdp"))
 	})
 	return err
