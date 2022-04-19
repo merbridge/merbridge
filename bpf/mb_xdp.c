@@ -137,17 +137,6 @@ __section("xdp") int mb_xdp(struct xdp_md *ctx)
         __u16 oldd = tcph->dest;
         tcph->dest = bpf_htons(IN_REDIRECT_PORT); // rewrite dest port.
         tcph->check = csum_diff4(oldd, tcph->dest, tcph->check);
-        return XDP_PASS;
-    } else if (tcph->fin && tcph->ack) {
-        // todo delete key
-        struct pair p = {
-            .dip = iph->saddr,
-            .dport = tcph->source,
-            .sip = iph->daddr,
-            .sport = bpf_htons(IN_REDIRECT_PORT),
-        };
-        bpf_map_delete_elem(&pair_original_dst, &p);
-        return XDP_PASS;
     } else if (tcph->source == bpf_htons(IN_REDIRECT_PORT)) {
         // response
         // like from 172.31.0.123:15006 => 10.0.0.1:23456
@@ -174,7 +163,6 @@ __section("xdp") int mb_xdp(struct xdp_md *ctx)
         __u16 olds = tcph->source;
         tcph->source = origin->port; // rewrite source port.
         tcph->check = csum_diff4(olds, tcph->source, tcph->check);
-        return XDP_PASS;
     } else {
         // request
         struct pair p = {
@@ -203,7 +191,16 @@ __section("xdp") int mb_xdp(struct xdp_md *ctx)
         __u16 oldd = tcph->dest;
         tcph->dest = bpf_htons(IN_REDIRECT_PORT); // rewrite dest port.
         tcph->check = csum_diff4(oldd, tcph->dest, tcph->check);
-        return XDP_PASS;
+    }
+    if (tcph->fin && tcph->ack) {
+        // todo delete key
+        struct pair p = {
+            .dip = iph->saddr,
+            .dport = tcph->source,
+            .sip = iph->daddr,
+            .sport = bpf_htons(IN_REDIRECT_PORT),
+        };
+        bpf_map_delete_elem(&pair_original_dst, &p);
     }
     return XDP_PASS;
 }
