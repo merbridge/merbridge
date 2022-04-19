@@ -78,6 +78,9 @@ load-map-local_pod_ips:
 load-map-process_ip:
 	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
 
+load-map-mark_pod_ips_map:
+	[ -f $(PROG_MOUNT_PATH)/mark_pod_ips_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/mark_pod_ips_map type hash key 4 value 4 entries 65535 name mark_pod_ips_map
+
 load-map-pair_original_dst:
 	[ -f $(PROG_MOUNT_PATH)/pair_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/pair_original_dst type lru_hash key 12 value 12 entries 65535 name pair_original_dst
 
@@ -91,7 +94,8 @@ clean-maps:
 		$(PROG_MOUNT_PATH)/pair_original_dst \
 		$(PROG_MOUNT_PATH)/process_ip \
 		$(PROG_MOUNT_PATH)/local_pod_ips \
-		$(PROG_MOUNT_PATH)/cookie_original_dst
+		$(PROG_MOUNT_PATH)/cookie_original_dst \
+		$(PROG_MOUNT_PATH)/mark_pod_ips_map
 
 load-getsock: load-map-pair_original_dst
 	sudo bpftool prog load mb_get_sockopts.o $(PROG_MOUNT_PATH)/get_sockopts \
@@ -111,10 +115,11 @@ clean-redir:
 	sudo bpftool prog detach pinned $(PROG_MOUNT_PATH)/redir msg_verdict pinned $(PROG_MOUNT_PATH)/sock_pair_map
 	sudo rm $(PROG_MOUNT_PATH)/redir
 
-load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip
+load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-mark_pod_ips_map
 	sudo bpftool prog load mb_connect.o $(PROG_MOUNT_PATH)/connect \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
+		map name mark_pod_ips_map pinned $(PROG_MOUNT_PATH)/mark_pod_ips_map \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip
 	sudo bpftool cgroup attach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect
 

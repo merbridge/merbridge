@@ -67,6 +67,30 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
         // we only deal pod's traffic managed by istio.
         return 1;
     }
+    __u32 curr_pod_ip = 0;
+    {
+        // get ip addresses of current pod/ns.
+        __u32 curr_ip_mark = 0;
+        struct bpf_sock_tuple tuple = {};
+        tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
+        tuple.ipv4.daddr = 0;
+        struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
+                                               BPF_F_CURRENT_NETNS, 0);
+        if (s) {
+            curr_ip_mark = s->mark;
+            bpf_sk_release(s);
+            __u32 *ip = bpf_map_lookup_elem(&mark_pod_ips_map, &curr_ip_mark);
+            if (ip) {
+                curr_pod_ip = *ip; // network order
+            } else {
+                debugf("get ip for mark %x error", curr_ip_mark);
+            }
+        }
+    }
+    if (curr_pod_ip == 0) {
+        debugf("get current pod ip error");
+        return 1;
+    }
     if (uid != SIDECAR_USER_ID) {
         if ((ctx->user_ip4 & 0xff) == 0x7f) {
             // app call local, bypass.
@@ -88,13 +112,28 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             printk("write cookie_original_dst failed");
             return 0;
         }
-        // The reason we try the IP of the 127.128.0.0/20 segment instead of
-        // using 127.0.0.1 directly is to avoid conflicts between the
-        // quaternions of different Pods when the quaternions are subsequently
-        // processed.
-        ctx->user_ip4 = bpf_htonl(0x7f800000 | (outip++));
-        if (outip >> 20) {
-            outip = 1;
+        if (curr_pod_ip) {
+            // todo port or ipranges ignore.
+            // if we can get the pod ip, we use bind func to bind the pod's ip
+            // as the source ip to avoid quaternions conflict of different pods.
+            struct sockaddr_in addr;
+            addr.sin_addr.s_addr = curr_pod_ip;
+            addr.sin_port = 0;
+            addr.sin_family = 2;
+            if (bpf_bind(ctx, &addr, sizeof(struct sockaddr_in))) {
+                printk("bind %x error", curr_pod_ip);
+            }
+            ctx->user_ip4 = bpf_htonl(0x7f000001);
+        } else {
+            // if we can not get the pod ip, we rewrite the dest address.
+            // The reason we try the IP of the 127.128.0.0/20 segment instead of
+            // using 127.0.0.1 directly is to avoid conflicts between the
+            // quaternions of different Pods when the quaternions are
+            // subsequently processed.
+            ctx->user_ip4 = bpf_htonl(0x7f800000 | (outip++));
+            if (outip >> 20) {
+                outip = 1;
+            }
         }
         ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
@@ -115,28 +154,37 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             .port = ctx->user_port,
             .pid = pid,
         };
-        void *curr_ip = bpf_map_lookup_elem(&process_ip, &pid);
-        if (curr_ip) {
-            // envoy to other envoy
-            if (*(__u32 *)curr_ip != ctx->user_ip4) {
-                debugf("enovy to other, rewrite dst port from %d to %d",
-                       ctx->user_port, IN_REDIRECT_PORT);
+        if (curr_pod_ip) {
+            origin.flags |= 1;
+            if (curr_pod_ip == ip) {
+                // call other pod, need redirect port.
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
             }
-            origin.flags |= 1;
-            // envoy to app, no rewrite
         } else {
-            origin.flags = 0;
+            // can not get current pod ip, we use the lagecy mode.
+            void *curr_ip = bpf_map_lookup_elem(&process_ip, &pid);
+            if (curr_ip) {
+                // envoy to other envoy
+                if (*(__u32 *)curr_ip != ctx->user_ip4) {
+                    debugf("enovy to other, rewrite dst port from %d to %d",
+                           ctx->user_port, IN_REDIRECT_PORT);
+                    ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
+                }
+                origin.flags |= 1;
+                // envoy to app, no rewrite
+            } else {
+                origin.flags = 0;
 #ifdef USE_RECONNECT
-            // envoy to envoy
-            // try redirect to 15006
-            // but it may cause error if it is envoy call self pod,
-            // in this case, we can read src and dst ip in sockops,
-            // if src is equals dst, it means envoy call self pod,
-            // we should reject this traffic in sockops,
-            // envoy will create a new connection to self pod.
-            ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
+                // envoy to envoy
+                // try redirect to 15006
+                // but it may cause error if it is envoy call self pod,
+                // in this case, we can read src and dst ip in sockops,
+                // if src is equals dst, it means envoy call self pod,
+                // we should reject this traffic in sockops,
+                // envoy will create a new connection to self pod.
+                ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
 #endif
+            }
         }
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_NOEXIST)) {

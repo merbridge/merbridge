@@ -61,3 +61,11 @@ struct bpf_map __section("maps") sock_pair_map = {
     .max_entries = 65535,
     .map_flags = 0,
 };
+
+struct bpf_map __section("maps") mark_pod_ips_map = {
+    .type = BPF_MAP_TYPE_HASH,
+    .key_size = sizeof(__u32),
+    .value_size = sizeof(__u32), // todo ipv6
+    .max_entries = 65535,
+    .map_flags = 0,
+};
