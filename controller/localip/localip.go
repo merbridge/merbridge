@@ -177,7 +177,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 	if len(excludeInboundPorts) > 0 {
 		for i, p := range excludeInboundPorts {
 			if i >= MaxItemLen {
-				continue
+				break
 			}
 			pod.excludeInPorts[i] = p
 		}
@@ -187,7 +187,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		if len(excludeOutboundPorts) > 0 {
 			for i, p := range excludeOutboundPorts {
 				if i >= MaxItemLen {
-					continue
+					break
 				}
 				pod.excludeOutPorts[i] = p
 			}
@@ -199,7 +199,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		if len(includeInboundPorts) > 0 {
 			for i, p := range includeInboundPorts {
 				if i >= MaxItemLen {
-					continue
+					break
 				}
 				pod.includeInPorts[i] = p
 			}
@@ -210,7 +210,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		if len(includeOutboundPorts) > 0 {
 			for i, p := range includeOutboundPorts {
 				if i >= MaxItemLen {
-					continue
+					break
 				}
 				pod.includeOutPorts[i] = p
 			}
@@ -222,7 +222,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		if len(excludeOutboundIPRanges) > 0 {
 			for i, p := range excludeOutboundIPRanges {
 				if i >= MaxItemLen {
-					continue
+					break
 				}
 				pod.excludeOutRanges[i] = p
 			}
@@ -233,7 +233,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		if len(includeOutboundIPRanges) > 0 {
 			for i, p := range includeOutboundIPRanges {
 				if i >= MaxItemLen {
-					continue
+					break
 				}
 				pod.includeOutRanges[i] = p
 			}

@@ -52,7 +52,7 @@ func Test_parseConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "excludeInboundPorts",
+			name: "excludeOutboundIPRanges",
 			annotations: map[string]string{
 				"traffic.sidecar.istio.io/excludeOutboundIPRanges": "192.168.0.0/16,172.31.0.1/20",
 			},
@@ -74,7 +74,7 @@ func Test_parseConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "excludeInboundPorts invalid",
+			name: "excludeOutboundIPRanges invalid",
 			annotations: map[string]string{
 				"traffic.sidecar.istio.io/excludeOutboundIPRanges": "192.168.0.0/16,1721.0.1/20",
 			},
