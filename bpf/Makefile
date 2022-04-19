@@ -52,7 +52,7 @@ ifeq ($(CGROUP2_PATH),)
 $(error It looks like your system does not have cgroupv2 enabled, or the automatic recognition fails. Please enable cgroupv2, or specify the path of cgroupv2 manually via CGROUP2_PATH parameter.)
 endif
 
-TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o mb_sendmsg.o mb_recvmsg.o
+TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o mb_sendmsg.o mb_recvmsg.o mb_xdp.o
 
 init-cgroup:
 	[ -d $(PROG_MOUNT_PATH)/ ] || sudo mount -t bpf bpf $(PROG_MOUNT_PATH)
@@ -73,7 +73,7 @@ load-map-cookie_original_dst:
 	[ -f $(PROG_MOUNT_PATH)/cookie_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cookie_original_dst type lru_hash key 8 value 12 entries 65535 name cookie_original_dst
 
 load-map-local_pod_ips:
-	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 4 value 4 entries 1024 name local_pod_ips
+	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 4 value 244 entries 1024 name local_pod_ips
 
 load-map-process_ip:
 	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
@@ -160,8 +160,16 @@ clean-recvmsg:
 	sudo bpftool cgroup detach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg
 	sudo rm -rf $(PROG_MOUNT_PATH)/recvmsg
 
+load-xdp: mb_xdp.o load-map-pair_original_dst
+	sudo bpftool prog load mb_xdp.o $(PROG_MOUNT_PATH)/mb_xdp \
+		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst \
+		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips
+
+clean-xdp:
+	sudo rm $(PROG_MOUNT_PATH)/mb_xdp
+
 load: compile load-from-obj
 
-load-from-obj: load-connect load-sockops load-getsock load-redir load-bind load-sendmsg load-recvmsg
+load-from-obj: load-connect load-sockops load-getsock load-redir load-bind load-sendmsg load-recvmsg load-xdp
 
-clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind clean-sendmsg clean-recvmsg
+clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind clean-sendmsg clean-recvmsg clean-xdp
