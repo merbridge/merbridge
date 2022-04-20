@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"os"
 	"os/exec"
@@ -129,6 +130,13 @@ func getXDPPinnedPath(bpfPath, ns, pod, eth string) string {
 	return path.Join(bpfPath, "xdps", ns, pod, eth)
 }
 
+func getMarkKeyOfNetns(netns string) uint32 {
+	// todo check confict?
+	algorithm := fnv.New32a()
+	_, _ = algorithm.Write([]byte(netns))
+	return algorithm.Sum32()
+}
+
 func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -150,34 +158,29 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 	}
 	addrs := netnsEthsGetIPs(args.Netns)
 	if len(addrs) != 1 {
-		return fmt.Errorf("get ip address of %s error: res: %v", args.Netns, addrs)
+		return fmt.Errorf("get ip address of %s error: res: %v, merbridge only support single ip address", args.Netns, addrs)
 	}
 	lc := net.ListenConfig{
 		Control: func(network, address string, conn syscall.RawConn) error {
 			var operr error
 			if err := conn.Control(func(fd uintptr) {
-				if len(addrs) != 1 {
-					// todo support multiple address
-					operr = fmt.Errorf("merbridge only support single ip address")
-					return
-				}
 				m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
 				if err != nil {
 					operr = err
 					return
 				}
-				var key uint32
+				var ip uint32
 				switch v := addrs[0].(type) { // todo instead of hash
 				case *net.IPNet: // nolint: typecheck
-					key, err = linux.IP2Linux(v.IP.String())
+					ip, err = linux.IP2Linux(v.IP.String())
 				case *net.IPAddr: // nolint: typecheck
-					key, err = linux.IP2Linux(v.String())
+					ip, err = linux.IP2Linux(v.String())
 				}
 				if err != nil {
 					operr = err
 					return
 				}
-				var ip uint32 = key
+				var key uint32 = getMarkKeyOfNetns(args.Netns)
 				operr = m.Update(key, ip, ebpf.UpdateAny)
 				if operr != nil {
 					return
@@ -240,5 +243,10 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 	}
 	p := path.Join(s.bpfMountPath, "xdps", string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME))
 	os.RemoveAll(p)
-	return nil
+	m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
+	if err != nil {
+		return err
+	}
+	key := getMarkKeyOfNetns(args.Netns)
+	return m.Delete(key)
 }
