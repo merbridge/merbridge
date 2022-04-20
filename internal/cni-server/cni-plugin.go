@@ -62,7 +62,7 @@ func netnsEthsGetIPs(nsname string) []net.Addr {
 		return nil
 	})
 	if err != nil {
-		log.Errorf("get netns %s ip addresses error: %v", err)
+		log.Errorf("get netns %s ip addresses error: %v", nsname, err)
 	}
 	return outAddrs
 }
@@ -168,13 +168,20 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 				}
 				var key uint32
 				switch v := addrs[0].(type) { // todo instead of hash
-				case *net.IPNet:
+				case *net.IPNet: // nolint: typecheck
 					key, err = linux.IP2Linux(v.IP.String())
-				case *net.IPAddr:
+				case *net.IPAddr: // nolint: typecheck
 					key, err = linux.IP2Linux(v.String())
+				}
+				if err != nil {
+					operr = err
+					return
 				}
 				var ip uint32 = key
 				operr = m.Update(key, ip, ebpf.UpdateAny)
+				if operr != nil {
+					return
+				}
 				operr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_MARK, int(key))
 			}); err != nil {
 				return err

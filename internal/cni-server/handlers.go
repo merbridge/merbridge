@@ -43,7 +43,7 @@ func (s *server) PodCreated(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte(err.Error()))
 	}
 	w.WriteHeader(200)
-	w.Write([]byte("ok"))
+	_, _ = w.Write([]byte("ok"))
 }
 
 func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
@@ -70,5 +70,5 @@ func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte(err.Error()))
 	}
 	w.WriteHeader(200)
-	w.Write([]byte("ok"))
+	_, _ = w.Write([]byte("ok"))
 }
