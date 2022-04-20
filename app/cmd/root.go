@@ -26,6 +26,7 @@ import (
 
 	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/controller"
+	cniserver "github.com/merbridge/merbridge/internal/cni-server"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -33,10 +34,18 @@ var rootCmd = &cobra.Command{
 	Use:   "mbctl",
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		s := cniserver.NewServer("/var/run/merbridge-cni.sock", "/sys/fs/bpf")
+		if err := s.Start(); err != nil {
+			log.Fatal(err)
+			return err
+		}
+		// todo wait for stop
 		if err := controller.Run(); err != nil {
 			log.Fatal(err)
+			return err
 		}
+		return nil
 	},
 }
 
