@@ -16,3 +16,6 @@
 /go.*               @merbridge/control-plane-maintainers
 /bpf/               @merbridge/ebpf-prog-maintainers
 *.md                @merbridge/docs-maintainers
+/internal/cni*      @merbridge/cni-maintainers
+/pkg/cni*           @merbridge/cni-maintainers
+/app/cni            @merbridge/cni-maintainers
