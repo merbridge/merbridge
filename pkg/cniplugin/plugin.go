@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
@@ -33,6 +35,7 @@ import (
 	"github.com/merbridge/merbridge/config/constants"
 )
 
+// copied from https://github.com/istio/istio/blob/1.13.3/cni/pkg/plugin/plugin.go#L94-L120
 // parseConfig parses the supplied configuration (and prevResult) from stdin.
 func parseConfig(stdin []byte) (*plugin.Config, error) {
 	conf := plugin.Config{}
@@ -62,7 +65,83 @@ func parseConfig(stdin []byte) (*plugin.Config, error) {
 	return &conf, nil
 }
 
+// references https://github.com/istio/istio/blob/1.13.3/cni/pkg/plugin/plugin.go#L205
+func ignore(conf *plugin.Config, k8sArgs *plugin.K8sArgs) bool {
+	ns := string(k8sArgs.K8S_POD_NAMESPACE)
+	name := string(k8sArgs.K8S_POD_NAME)
+	if ns != "" && name != "" {
+		for _, excludeNs := range conf.Kubernetes.ExcludeNamespaces {
+			if ns == excludeNs {
+				log.Infof("Pod %s/%s excluded", ns, name)
+				return true
+			}
+		}
+		client, err := newKubeClient(*conf)
+		if err != nil {
+			log.Error(err)
+			return true
+		}
+		pi := &plugin.PodInfo{}
+		for attempt := 1; attempt <= podRetrievalMaxRetries; attempt++ {
+			pi, err = getKubePodInfo(client, name, ns)
+			if err == nil {
+				break
+			}
+			log.Debugf("Failed to get %s/%s pod info: %v", ns, name, err)
+			time.Sleep(podRetrievalInterval)
+		}
+		if err != nil {
+			log.Errorf("Failed to get %s/%s pod info: %v", ns, name, err)
+			return true
+		}
+		return ignorePod(ns, name, pi)
+	}
+	log.Debugf("Not a kubernetes pod")
+	return true
+}
+
+func ignorePod(namespace, name string, pod *plugin.PodInfo) bool {
+	if val, ok := pod.ProxyEnvironments["DISABLE_ENVOY"]; ok {
+		if val, err := strconv.ParseBool(val); err == nil && val {
+			log.Infof("Pod %s/%s excluded due to DISABLE_ENVOY on istio-proxy", namespace, name)
+			return true
+		}
+	}
+	if len(pod.Containers) > 1 {
+		if val, ok := pod.Annotations[injectAnnotationKey]; ok {
+			if injectEnabled, err := strconv.ParseBool(val); err == nil {
+				if !injectEnabled {
+					log.Infof("Pod %s/%s excluded due to inject-disabled annotation", namespace, name)
+					return true
+				}
+			}
+		}
+		if _, ok := pod.Annotations[sidecarStatusKey]; !ok {
+			log.Infof("Pod %s/%s excluded due to not containing sidecar annotation", namespace, name)
+			return true
+		}
+		return false
+	}
+	log.Infof("Pod %s/%s excluded because it only has %d containers", namespace, name, len(pod.Containers))
+	return true
+}
+
 func CmdAdd(args *skel.CmdArgs) (err error) {
+	conf, err := parseConfig(args.StdinData)
+	if err != nil {
+		log.Errorf("istio-cni cmdAdd failed to parse config %v %v", string(args.StdinData), err)
+		return err
+	}
+	k8sArgs := plugin.K8sArgs{}
+	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
+		return err
+	}
+
+	if ignore(conf, &k8sArgs) {
+		// ignore uninjected pods
+		return nil
+	}
+
 	httpc := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
@@ -75,12 +154,6 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 	body := bytes.NewReader(bs)
 	_, err = http.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
 	if err != nil {
-		return err
-	}
-
-	conf, err := parseConfig(args.StdinData)
-	if err != nil {
-		log.Errorf("istio-cni cmdAdd failed to parse config %v %v", string(args.StdinData), err)
 		return err
 	}
 
