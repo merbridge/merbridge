@@ -69,7 +69,7 @@ func (s *server) Start() error {
 		HandlerFunc(s.PodCreated)
 
 	r.Path(constants.CNIDeletePodURL).
-		Methods("DELETE").
+		Methods("POST").
 		HandlerFunc(s.PodDeleted)
 
 	ss := http.Server{
