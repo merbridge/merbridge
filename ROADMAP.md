@@ -9,7 +9,10 @@
 
 ## Control Plane
 - [ ] Metrics
-- [ ] Istio sidecar annotions
+- [ ] Istio sidecar annotations
+
+## CNI
+- [ ] Merbridge CNI
 
 ## Docs
 - [ ] Website
