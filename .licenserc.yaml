@@ -34,7 +34,6 @@ header:
     - '**/*.pb.html'
     - '**/*.proto'
     - 'deploy/'
-    - 'scripts/'
     - 'helm/'
     - '.clang-format'
     - 'CODEOWNERS'
