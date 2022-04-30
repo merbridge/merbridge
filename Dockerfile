@@ -14,7 +14,7 @@ RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
 RUN cd /app/linux/tools/bpf/bpftool && \
     make && make install
 
-FROM golang:1.17 as mbctl
+FROM golang:1.18.0 as mbctl
 
 WORKDIR /app
 
