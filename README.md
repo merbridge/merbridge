@@ -50,3 +50,11 @@ Made with [contrib.rocks](https://contrib.rocks).
 Copyright 2022 the Merbridge Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0.
+
+## Landscapes
+
+<p align="center">
+<img src="https://landscape.cncf.io/images/left-logo.svg" width="150"/>&nbsp;&nbsp;<img src="https://landscape.cncf.io/images/right-logo.svg" width="200"/>
+<br/><br/>
+Merbridge enriches the <a href="https://landscape.cncf.io/?selected=merbridge">CNCF CLOUD NATIVE Landscape.</a>
+</p>
