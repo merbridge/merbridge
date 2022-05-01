@@ -115,65 +115,37 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             __u32 ip = curr_pod_ip;
             struct pod_config *pod = bpf_map_lookup_elem(&local_pod_ips, &ip);
             if (pod) {
-
-                // todo use macro instead
-                for (int i = 0;
-                     i < MAX_ITEM_LEN && pod->exclude_out_ports[i] != 0; i++) {
-                    if (bpf_htons(ctx->user_port) ==
-                        pod->exclude_out_ports[i]) {
-                        debugf("ignored dest port by exclude_out_ports, ip: "
-                               "%x, port: %d",
-                               ip, bpf_htons(ctx->user_port));
-                        return 1;
-                    }
+                int exclude = 0;
+                IS_EXCLUDE_PORT(pod->exclude_out_ports, ctx->user_port,
+                                &exclude);
+                if (exclude) {
+                    debugf("ignored dest port by exclude_out_ports, ip: "
+                           "%x, port: %d",
+                           ip, bpf_htons(ctx->user_port));
+                    return 1;
                 }
-                for (int i = 0;
-                     i < MAX_ITEM_LEN && pod->exclude_out_ranges[i].net != 0;
-                     i++) {
-                    if (is_in_cidr(&pod->exclude_out_ranges[i],
-                                   ctx->user_ip4)) {
-                        debugf(
-                            "ignored dest ranges by exclude_out_ranges, ip: %x",
-                            ctx->user_ip4);
-                        return 1;
-                    }
+                IS_EXCLUDE_IPRANGES(pod->exclude_out_ranges, ctx->user_ip4,
+                                    &exclude);
+                debugf("exclude ipranges: %x, exclude: %d",
+                       pod->exclude_out_ranges[0].net, exclude);
+                if (exclude) {
+                    debugf("ignored dest ranges by exclude_out_ranges, ip: %x",
+                           ctx->user_ip4);
+                    return 1;
                 }
-
-                int find = 0;
-                if (pod->include_out_ports[0] != 0) {
-                    for (int i = 0;
-                         i < MAX_ITEM_LEN && pod->include_out_ports[i] != 0;
-                         i++) {
-                        if (bpf_htons(ctx->user_port) ==
-                            pod->include_out_ports[i]) {
-                            find = 1;
-                            break;
-                        }
-                    }
-                } else {
-                    find = 1;
-                }
-                if (!find) {
+                int include = 0;
+                IS_INCLUDE_PORT(pod->include_out_ports, ctx->user_port,
+                                &include);
+                if (!include) {
                     debugf("dest port %d not in pod(%x)'s include_out_ports, "
                            "ignored.",
                            bpf_htons(ctx->user_port), ip);
                     return 1;
                 }
-                find = 0;
-                if (pod->include_out_ranges[0].net != 0) {
-                    for (int i = 0; i < MAX_ITEM_LEN &&
-                                    pod->include_out_ranges[i].net != 0;
-                         i++) {
-                        if (is_in_cidr(&pod->include_out_ranges[i],
-                                       ctx->user_ip4)) {
-                            find = 1;
-                            break;
-                        }
-                    }
-                } else {
-                    find = 1;
-                }
-                if (!find) {
+
+                IS_INCLUDE_IPRANGES(pod->include_out_ranges, ctx->user_ip4,
+                                    &include);
+                if (!include) {
                     debugf(
                         "dest %x not in pod(%x)'s include_out_ranges, ignored.",
                         ctx->user_ip4, ip);
@@ -229,6 +201,28 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             origin.flags |= 1;
             if (curr_pod_ip != ip) {
                 // call other pod, need redirect port.
+                struct pod_config *pod =
+                    bpf_map_lookup_elem(&local_pod_ips, &ip);
+                if (pod) {
+                    int exclude = 0;
+                    IS_EXCLUDE_PORT(pod->exclude_in_ports, ctx->user_port,
+                                    &exclude);
+                    if (exclude) {
+                        debugf("ignored dest port by exclude_in_ports, ip: %x, "
+                               "port: %d",
+                               ip, bpf_htons(ctx->user_port));
+                        return 1;
+                    }
+                    int include = 0;
+                    IS_INCLUDE_PORT(pod->include_in_ports, ctx->user_port,
+                                    &include);
+                    if (!include) {
+                        debugf("ignored dest port by include_in_ports, ip: %x, "
+                               "port: %d",
+                               ip, bpf_htons(ctx->user_port));
+                        return 1;
+                    }
+                }
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
             }
         } else {
