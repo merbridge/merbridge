@@ -112,6 +112,78 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             return 0;
         }
         if (curr_pod_ip) {
+            __u32 ip = curr_pod_ip;
+            struct pod_config *pod = bpf_map_lookup_elem(&local_pod_ips, &ip);
+            if (pod) {
+
+                // todo use macro instead
+                for (int i = 0;
+                     i < MAX_ITEM_LEN && pod->exclude_out_ports[i] != 0; i++) {
+                    if (bpf_htons(ctx->user_port) ==
+                        pod->exclude_out_ports[i]) {
+                        debugf("ignored dest port by exclude_out_ports, ip: "
+                               "%x, port: %d",
+                               ip, bpf_htons(ctx->user_port));
+                        return 1;
+                    }
+                }
+                for (int i = 0;
+                     i < MAX_ITEM_LEN && pod->exclude_out_ranges[i].net != 0;
+                     i++) {
+                    if (is_in_cidr(&pod->exclude_out_ranges[i],
+                                   ctx->user_ip4)) {
+                        debugf(
+                            "ignored dest ranges by exclude_out_ranges, ip: %x",
+                            ctx->user_ip4);
+                        return 1;
+                    }
+                }
+
+                int find = 0;
+                if (pod->include_out_ports[0] != 0) {
+                    for (int i = 0;
+                         i < MAX_ITEM_LEN && pod->include_out_ports[i] != 0;
+                         i++) {
+                        if (bpf_htons(ctx->user_port) ==
+                            pod->include_out_ports[i]) {
+                            find = 1;
+                            break;
+                        }
+                    }
+                } else {
+                    find = 1;
+                }
+                if (!find) {
+                    debugf("dest port %d not in pod(%x)'s include_out_ports, "
+                           "ignored.",
+                           bpf_htons(ctx->user_port), ip);
+                    return 1;
+                }
+                find = 0;
+                if (pod->include_out_ranges[0].net != 0) {
+                    for (int i = 0; i < MAX_ITEM_LEN &&
+                                    pod->include_out_ranges[i].net != 0;
+                         i++) {
+                        if (is_in_cidr(&pod->include_out_ranges[i],
+                                       ctx->user_ip4)) {
+                            find = 1;
+                            break;
+                        }
+                    }
+                } else {
+                    find = 1;
+                }
+                if (!find) {
+                    debugf(
+                        "dest %x not in pod(%x)'s include_out_ranges, ignored.",
+                        ctx->user_ip4, ip);
+                    return 1;
+                }
+            } else {
+                debugf("current pod ip found(%x), but can not find pod_info "
+                       "from local_pod_ips",
+                       curr_pod_ip);
+            }
             // todo port or ipranges ignore.
             // if we can get the pod ip, we use bind func to bind the pod's ip
             // as the source ip to avoid quaternions conflict of different pods.

@@ -97,16 +97,19 @@ __section("xdp") int mb_xdp(struct xdp_md *ctx)
         if (bpf_htons(tcph->dest) == pod->status_port) {
             return XDP_PASS;
         }
-        if (pod->exclude_in_ports[0] != 0) {
-            for (int i = 0; i < MAX_ITEM_LEN; i++) {
-                if (bpf_htons(tcph->dest) == pod->exclude_in_ports[i]) {
-                    return XDP_PASS;
-                }
+        for (int i = 0; i < MAX_ITEM_LEN && pod->exclude_in_ports[i] != 0;
+             i++) {
+            if (bpf_htons(tcph->dest) == pod->exclude_in_ports[i]) {
+                debugf(
+                    "ignored dest port by exclude_in_ports, ip: %x, port: %d",
+                    iph->daddr, bpf_htons(tcph->dest));
+                return XDP_PASS;
             }
         }
         int find = 0;
         if (pod->include_in_ports[0] != 0) {
-            for (int i = 0; i < MAX_ITEM_LEN; i++) {
+            for (int i = 0; i < MAX_ITEM_LEN && pod->include_in_ports[i] != 0;
+                 i++) {
                 if (bpf_htons(tcph->dest) == pod->include_in_ports[i]) {
                     find = 1;
                     break;
