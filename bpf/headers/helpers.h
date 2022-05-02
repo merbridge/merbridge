@@ -160,7 +160,7 @@ struct cidr {
     __u8 __pad[3];
 };
 
-int is_in_cidr(struct cidr *c, __u32 ip)
+static inline int is_in_cidr(struct cidr *c, __u32 ip)
 {
     return (bpf_htonl(c->net) >> c->mask) == bpf_htonl(ip) >> c->mask;
 }
