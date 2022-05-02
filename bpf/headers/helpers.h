@@ -155,10 +155,15 @@ struct pair {
 #define MAX_ITEM_LEN 10
 
 struct cidr {
-    __u32 net;
+    __u32 net; // network order
     __u8 mask;
     __u8 __pad[3];
 };
+
+static inline int is_in_cidr(struct cidr *c, __u32 ip)
+{
+    return (bpf_htonl(c->net) >> c->mask) == bpf_htonl(ip) >> c->mask;
+}
 
 struct pod_config {
     __u16 status_port;
@@ -170,3 +175,55 @@ struct pod_config {
     __u16 exclude_in_ports[MAX_ITEM_LEN];
     __u16 exclude_out_ports[MAX_ITEM_LEN];
 };
+
+#define IS_EXCLUDE_PORT(ITEM, PORT, RET)                                       \
+    do {                                                                       \
+        *RET = 0;                                                              \
+        for (int i = 0; i < MAX_ITEM_LEN && ITEM[i] != 0; i++) {               \
+            if (bpf_htons(PORT) == ITEM[i]) {                                  \
+                *RET = 1;                                                      \
+                break;                                                         \
+            }                                                                  \
+        }                                                                      \
+    } while (0);
+
+#define IS_EXCLUDE_IPRANGES(ITEM, IP, RET)                                     \
+    do {                                                                       \
+        *RET = 0;                                                              \
+        for (int i = 0; i < MAX_ITEM_LEN && ITEM[i].net != 0; i++) {           \
+            if (is_in_cidr(&ITEM[i], IP)) {                                    \
+                *RET = 1;                                                      \
+                break;                                                         \
+            }                                                                  \
+        }                                                                      \
+    } while (0);
+
+#define IS_INCLUDE_PORT(ITEM, PORT, RET)                                       \
+    do {                                                                       \
+        *RET = 0;                                                              \
+        if (ITEM[0] != 0) {                                                    \
+            for (int i = 0; i < MAX_ITEM_LEN && ITEM[i] != 0; i++) {           \
+                if (bpf_htons(PORT) == ITEM[i]) {                              \
+                    *RET = 1;                                                  \
+                    break;                                                     \
+                }                                                              \
+            }                                                                  \
+        } else {                                                               \
+            *RET = 1;                                                          \
+        }                                                                      \
+    } while (0);
+
+#define IS_INCLUDE_IPRANGES(ITEM, IP, RET)                                     \
+    do {                                                                       \
+        *RET = 0;                                                              \
+        if (ITEM[0].net != 0) {                                                \
+            for (int i = 0; i < MAX_ITEM_LEN && ITEM[i].net != 0; i++) {       \
+                if (is_in_cidr(&ITEM[i], IP)) {                                \
+                    *RET = 1;                                                  \
+                    break;                                                     \
+                }                                                              \
+            }                                                                  \
+        } else {                                                               \
+            *RET = 1;                                                          \
+        }                                                                      \
+    } while (0);

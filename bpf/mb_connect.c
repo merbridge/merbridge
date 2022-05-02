@@ -112,6 +112,50 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             return 0;
         }
         if (curr_pod_ip) {
+            __u32 ip = curr_pod_ip;
+            struct pod_config *pod = bpf_map_lookup_elem(&local_pod_ips, &ip);
+            if (pod) {
+                int exclude = 0;
+                IS_EXCLUDE_PORT(pod->exclude_out_ports, ctx->user_port,
+                                &exclude);
+                if (exclude) {
+                    debugf("ignored dest port by exclude_out_ports, ip: "
+                           "%x, port: %d",
+                           ip, bpf_htons(ctx->user_port));
+                    return 1;
+                }
+                IS_EXCLUDE_IPRANGES(pod->exclude_out_ranges, ctx->user_ip4,
+                                    &exclude);
+                debugf("exclude ipranges: %x, exclude: %d",
+                       pod->exclude_out_ranges[0].net, exclude);
+                if (exclude) {
+                    debugf("ignored dest ranges by exclude_out_ranges, ip: %x",
+                           ctx->user_ip4);
+                    return 1;
+                }
+                int include = 0;
+                IS_INCLUDE_PORT(pod->include_out_ports, ctx->user_port,
+                                &include);
+                if (!include) {
+                    debugf("dest port %d not in pod(%x)'s include_out_ports, "
+                           "ignored.",
+                           bpf_htons(ctx->user_port), ip);
+                    return 1;
+                }
+
+                IS_INCLUDE_IPRANGES(pod->include_out_ranges, ctx->user_ip4,
+                                    &include);
+                if (!include) {
+                    debugf(
+                        "dest %x not in pod(%x)'s include_out_ranges, ignored.",
+                        ctx->user_ip4, ip);
+                    return 1;
+                }
+            } else {
+                debugf("current pod ip found(%x), but can not find pod_info "
+                       "from local_pod_ips",
+                       curr_pod_ip);
+            }
             // todo port or ipranges ignore.
             // if we can get the pod ip, we use bind func to bind the pod's ip
             // as the source ip to avoid quaternions conflict of different pods.
@@ -157,6 +201,28 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             origin.flags |= 1;
             if (curr_pod_ip != ip) {
                 // call other pod, need redirect port.
+                struct pod_config *pod =
+                    bpf_map_lookup_elem(&local_pod_ips, &ip);
+                if (pod) {
+                    int exclude = 0;
+                    IS_EXCLUDE_PORT(pod->exclude_in_ports, ctx->user_port,
+                                    &exclude);
+                    if (exclude) {
+                        debugf("ignored dest port by exclude_in_ports, ip: %x, "
+                               "port: %d",
+                               ip, bpf_htons(ctx->user_port));
+                        return 1;
+                    }
+                    int include = 0;
+                    IS_INCLUDE_PORT(pod->include_in_ports, ctx->user_port,
+                                    &include);
+                    if (!include) {
+                        debugf("ignored dest port by include_in_ports, ip: %x, "
+                               "port: %d",
+                               ip, bpf_htons(ctx->user_port));
+                        return 1;
+                    }
+                }
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
             }
         } else {
