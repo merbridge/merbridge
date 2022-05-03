@@ -47,12 +47,7 @@ func (s *server) PodCreated(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
-	r, err := req.GetBody()
-	if err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte(err.Error()))
-	}
-	bs, err := ioutil.ReadAll(r)
+	bs, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(500)
 		_, _ = w.Write([]byte(err.Error()))

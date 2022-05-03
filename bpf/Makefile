@@ -47,10 +47,10 @@ ifeq ($(USE_RECONNECT),1)
     MACROS:= $(MACROS) -DUSE_RECONNECT
 endif
 
-CGROUP2_PATH ?= $(shell mount | grep cgroup2 | awk '{print $$3}')
-ifeq ($(CGROUP2_PATH),)
-$(error It looks like your system does not have cgroupv2 enabled, or the automatic recognition fails. Please enable cgroupv2, or specify the path of cgroupv2 manually via CGROUP2_PATH parameter.)
-endif
+CGROUP2_PATH ?= /sys/fs/cgroup
+# ifeq ($(CGROUP2_PATH),)
+# $(error It looks like your system does not have cgroupv2 enabled, or the automatic recognition fails. Please enable cgroupv2, or specify the path of cgroupv2 manually via CGROUP2_PATH parameter.)
+# endif
 
 TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o mb_sendmsg.o mb_recvmsg.o mb_xdp.o
 

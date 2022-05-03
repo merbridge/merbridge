@@ -43,7 +43,7 @@ type server struct {
 // the path this the unix path to listen.
 func NewServer(unixSockPath string, bpfMountPath string) Server {
 	if unixSockPath == "" {
-		unixSockPath = "/var/run/merbridge-cni.sock"
+		unixSockPath = "/host/var/run/merbridge-cni.sock"
 	}
 	if bpfMountPath == "" {
 		bpfMountPath = "/sys/fs/bpf"
@@ -71,6 +71,11 @@ func (s *server) Start() error {
 	r.Path(constants.CNIDeletePodURL).
 		Methods("POST").
 		HandlerFunc(s.PodDeleted)
+
+	// if err := s.checkExistingPods(); err != nil {
+	// 	log.Fatalf("Failed to check existing pods: %v", err)
+	// 	return err
+	// }
 
 	ss := http.Server{
 		Handler:      r,
