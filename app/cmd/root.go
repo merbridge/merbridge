@@ -91,9 +91,11 @@ func init() {
 func installCNI(ctx context.Context) {
 	installer := cniserver.NewInstaller()
 	go func() {
-		defer installer.Cleanup()
 		if err := installer.Run(ctx); err != nil {
 			log.Error(err)
+		}
+		if err := installer.Cleanup(); err != nil {
+			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
 		}
 	}()
 

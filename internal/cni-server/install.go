@@ -343,7 +343,7 @@ func copyBinaries() error {
 	srcFile := "/app/mb-cni"
 
 	if file.IsDirWriteable(CNIBinDir) != nil {
-		return fmt.Errorf("Directory %s is not writable.", CNIBinDir)
+		return fmt.Errorf("directory %s is not writable.", CNIBinDir)
 	}
 	err := file.AtomicCopy(srcFile, CNIBinDir, "mb-cni")
 	if err != nil {
@@ -361,11 +361,11 @@ func checkInstall(cniConfigFilepath string) error {
 	}
 	defaultCNIConfigFilepath := filepath.Join(CNIConfigDir, defaultCNIConfigFilename)
 	if defaultCNIConfigFilepath != cniConfigFilepath {
-		return fmt.Errorf("CNI config file %s preempted by %s", cniConfigFilepath, defaultCNIConfigFilepath)
+		return fmt.Errorf("cni config file %s preempted by %s", cniConfigFilepath, defaultCNIConfigFilepath)
 	}
 
 	if !file.Exists(cniConfigFilepath) {
-		return fmt.Errorf("CNI config file removed: %s", cniConfigFilepath)
+		return fmt.Errorf("cni config file removed: %s", cniConfigFilepath)
 	}
 
 	// Verify that Merbridge CNI config exists in the CNI config plugin list
@@ -387,7 +387,7 @@ func checkInstall(cniConfigFilepath string) error {
 		}
 	}
 
-	return fmt.Errorf("Merbridge CNI config removed from CNI config file: %s", cniConfigFilepath)
+	return fmt.Errorf("merbridge CNI config removed from CNI config file: %s", cniConfigFilepath)
 }
 
 // Read CNI config from file and return the unmarshalled JSON as a map
@@ -418,21 +418,6 @@ func createKubeconfigFile(saToken string) (kubeconfigFilepath string, err error)
 
 	// TODO: support tls
 	tlsConfig := "insecure-skip-tls-verify: true"
-	// caFile := constants.ServiceAccountPath + "/ca.crt"
-	// if cfg.SkipTLSVerify {
-	// 	tlsConfig = "insecure-skip-tls-verify: true"
-	// } else {
-	// 	if !file.Exists(caFile) {
-	// 		return "", fmt.Errorf("file does not exist: %s", caFile)
-	// 	}
-	// 	var caContents []byte
-	// 	caContents, err = ioutil.ReadFile(caFile)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	caBase64 := base64.StdEncoding.EncodeToString(caContents)
-	// 	tlsConfig = "certificate-authority-data: " + caBase64
-	// }
 
 	fields := kubeconfigFields{
 		KubernetesServiceProtocol: protocol,
@@ -449,16 +434,13 @@ func createKubeconfigFile(saToken string) (kubeconfigFilepath string, err error)
 
 	var kcbbToPrint bytes.Buffer
 	fields.ServiceAccountToken = "<redacted>"
-	// if !cfg.SkipTLSVerify {
-	// 	fields.TLSConfig = fmt.Sprintf("certificate-authority-data: <CA cert from %s>", caFile)
-	// }
 	if err := tpl.Execute(&kcbbToPrint, fields); err != nil {
 		return "", err
 	}
 
 	kubeconfigFilepath = filepath.Join(CNIConfigDir, kubeConfigFileName)
 	log.Infof("write kubeconfig file %s with: \n%+v", kubeconfigFilepath, kcbbToPrint.String())
-	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), 0600); err != nil {
+	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), os.FileMode(0600)); err != nil {
 		return "", err
 	}
 
