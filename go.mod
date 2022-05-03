@@ -8,16 +8,17 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1
-	k8s.io/api v0.23.5
+	k8s.io/api v0.23.6
 	k8s.io/client-go v0.23.5
 )
 
 require (
 	github.com/containernetworking/cni v1.0.1
 	github.com/gorilla/mux v1.8.0
-	github.com/spf13/viper v1.11.0
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
+	istio.io/api v0.0.0-20220415145822-bfb8bb7bb3e2
 	istio.io/istio v0.0.0-20220418011539-64c28815c8a3
+	k8s.io/apimachinery v0.23.6
 )
 
 require (
@@ -139,6 +140,7 @@ require (
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.11.0 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/vishvananda/netlink v1.2.0-beta // indirect
@@ -173,11 +175,9 @@ require (
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	istio.io/api v0.0.0-20220415145822-bfb8bb7bb3e2 // indirect
 	istio.io/client-go v1.12.0-alpha.5.0.20220415150322-7090720d58d2 // indirect
 	istio.io/pkg v0.0.0-20220412163443-dc80e140671f // indirect
 	k8s.io/apiextensions-apiserver v0.23.5 // indirect
-	k8s.io/apimachinery v0.23.5 // indirect
 	k8s.io/cli-runtime v0.23.5 // indirect
 	k8s.io/component-base v0.23.5 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
