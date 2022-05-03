@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/containernetworking/cni v1.0.1
+	github.com/containernetworking/cni v1.1.0
 	github.com/gorilla/mux v1.8.0
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	istio.io/api v0.0.0-20220415145822-bfb8bb7bb3e2
