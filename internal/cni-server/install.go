@@ -37,7 +37,7 @@ import (
 const (
 	CNIConfigDir       = "/host/etc/cni/net.d"
 	CNIBinDir          = "/host/opt/cni/bin"
-	kubeConfigFileName = "ZZZ-mb-cni-kubeconfig"
+	kubeConfigFileName = "ZZZ-merbridge-cni-kubeconfig"
 	tokenPath          = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 	kubeConfigTemplate = `# Kubeconfig file for Merbridge CNI plugin.
@@ -49,15 +49,15 @@ clusters:
     server: {{.KubernetesServiceProtocol}}://[{{.KubernetesServiceHost}}]:{{.KubernetesServicePort}}
     {{.TLSConfig}}
 users:
-- name: mb-cni
+- name: merbridge-cni
   user:
     token: "{{.ServiceAccountToken}}"
 contexts:
-- name: mb-cni-context
+- name: merbridge-cni-context
   context:
     cluster: local
-    user: mb-cni
-current-context: mb-cni-context
+    user: merbridge-cni
+current-context: merbridge-cni-context
 `
 )
 
@@ -128,7 +128,7 @@ func (in *Installer) Cleanup() error {
 			if err != nil {
 				return errors.Wrap(err, in.cniConfigFilepath)
 			}
-			if plugin["type"] == "mb-cni" {
+			if plugin["type"] == "merbridge-cni" {
 				cniConfigMap["plugins"] = append(plugins[:i], plugins[i+1:]...)
 				break
 			}
@@ -151,8 +151,8 @@ func (in *Installer) Cleanup() error {
 	}
 
 	log.Info("Removing existing binaries")
-	if file.Exists("/host/opt/cni/bin/mb-cni") {
-		if err := os.Remove("/host/opt/cni/bin/mb-cni"); err != nil {
+	if file.Exists("/host/opt/cni/bin/merbridge-cni") {
+		if err := os.Remove("/host/opt/cni/bin/merbridge-cni"); err != nil {
 			return err
 		}
 	}
@@ -163,7 +163,7 @@ func createCNIConfigFile(ctx context.Context) (string, error) {
 	// TODO(dddddai): support ExcludeNamespaces?
 	mbCNIConfig := fmt.Sprintf(`
 	{
-		"type": "mb-cni",
+		"type": "merbridge-cni",
 		"kubernetes": {
 			"kubeconfig": "/etc/cni/net.d/%s"
 		}
@@ -211,8 +211,8 @@ func insertCNIConfig(mbCNIConfig, existingCNIConfig []byte) ([]byte, error) {
 			if err != nil {
 				return nil, fmt.Errorf("existing CNI plugin: %v", err)
 			}
-			if plugin["type"] == "mb-cni" {
-				// it already contains mb-cni
+			if plugin["type"] == "merbridge-cni" {
+				// it already contains merbridge-cni
 				return util.MarshalCNIConfig(newMap)
 			}
 		}
@@ -229,7 +229,7 @@ func writeCNIConfig(ctx context.Context, mbCNIConfig []byte) (string, error) {
 		return "", err
 	}
 
-	// This section overwrites an existing plugins list entry for mb-cni
+	// This section overwrites an existing plugins list entry for merbridge-cni
 	existingCNIConfig, err := ioutil.ReadFile(cniConfigFilepath)
 	if err != nil {
 		return "", err
@@ -340,12 +340,12 @@ func sleepCheckInstall(ctx context.Context, cniConfigFilepath string) error {
 }
 
 func copyBinaries() error {
-	srcFile := "/app/mb-cni"
+	srcFile := "/app/merbridge-cni"
 
 	if file.IsDirWriteable(CNIBinDir) != nil {
-		return fmt.Errorf("directory %s is not writable.", CNIBinDir)
+		return fmt.Errorf("directory %s is not writable", CNIBinDir)
 	}
-	err := file.AtomicCopy(srcFile, CNIBinDir, "mb-cni")
+	err := file.AtomicCopy(srcFile, CNIBinDir, "merbridge-cni")
 	if err != nil {
 		return err
 	}
@@ -382,7 +382,7 @@ func checkInstall(cniConfigFilepath string) error {
 		if err != nil {
 			return errors.Wrap(err, cniConfigFilepath)
 		}
-		if plugin["type"] == "mb-cni" {
+		if plugin["type"] == "merbridge-cni" {
 			return nil
 		}
 	}

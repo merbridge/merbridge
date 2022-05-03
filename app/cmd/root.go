@@ -38,12 +38,14 @@ var rootCmd = &cobra.Command{
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s := cniserver.NewServer("/host/var/run/merbridge-cni.sock", "/sys/fs/bpf")
-		if err := s.Start(); err != nil {
-			log.Fatal(err)
-			return err
+		if config.EnableCNI {
+			s := cniserver.NewServer("/host/var/run/merbridge-cni.sock", "/sys/fs/bpf")
+			if err := s.Start(); err != nil {
+				log.Fatal(err)
+				return err
+			}
+			installCNI(cmd.Context())
 		}
-		installCNI(cmd.Context())
 		// todo wait for stop
 		if err := controller.Run(); err != nil {
 			log.Fatal(err)
@@ -85,6 +87,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.UseReconnect, "use-reconnect", "r", true, "Use re-connect mode as same-node acceleration")
 	rootCmd.PersistentFlags().BoolVarP(&config.Debug, "debug", "d", false, "Debug mode")
 	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Kubernetes in Kind mode")
+	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
 	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node ips file name")
 }
 

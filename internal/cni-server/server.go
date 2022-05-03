@@ -72,11 +72,6 @@ func (s *server) Start() error {
 		Methods("POST").
 		HandlerFunc(s.PodDeleted)
 
-	// if err := s.checkExistingPods(); err != nil {
-	// 	log.Fatalf("Failed to check existing pods: %v", err)
-	// 	return err
-	// }
-
 	ss := http.Server{
 		Handler:      r,
 		WriteTimeout: 15 * time.Second,

@@ -27,5 +27,6 @@ var (
 	IpsFile       string
 	UseReconnect  = true
 	Debug         = false
+	EnableCNI     = false
 	IsKind        = false // is Run Kubernetes in Docker
 )
