@@ -59,7 +59,7 @@ spec:
       labels:
         app: merbridge
     spec:
-      hostNetWork: true
+      hostNetwork: true
       containers:
       - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
@@ -71,6 +71,7 @@ spec:
         - --ips-file
         - /host/ips/ips.txt
         - --use-reconnect=true
+        - --cni-mode=false
         lifecycle:
           preStop:
             exec:
@@ -95,7 +96,7 @@ spec:
           - mountPath: /host/opt/cni/bin
             name: cni-bin-dir
           - mountPath: /host/etc/cni/net.d
-            name: cni-net-dir
+            name: cni-config-dir
           - mountPath: /host/proc
             name: host-proc
           - mountPath: /host/var/run
@@ -148,7 +149,7 @@ spec:
         name: cni-bin-dir
       - hostPath:
           path: /etc/cni/net.d
-        name: cni-net-dir
+        name: cni-config-dir
       - hostPath:
           path: /var/run
         name: host-var-run

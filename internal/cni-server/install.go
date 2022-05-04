@@ -23,6 +23,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,11 +33,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"istio.io/istio/cni/pkg/util"
 	"istio.io/istio/pkg/file"
+
+	"github.com/merbridge/merbridge/config"
 )
 
 const (
-	CNIConfigDir       = "/host/etc/cni/net.d"
-	CNIBinDir          = "/host/opt/cni/bin"
 	kubeConfigFileName = "ZZZ-merbridge-cni-kubeconfig"
 	tokenPath          = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
@@ -151,8 +152,9 @@ func (in *Installer) Cleanup() error {
 	}
 
 	log.Info("Removing existing binaries")
-	if file.Exists("/host/opt/cni/bin/merbridge-cni") {
-		if err := os.Remove("/host/opt/cni/bin/merbridge-cni"); err != nil {
+	cniBinPath := path.Join(config.CNIBinDir, "merbridge-cni")
+	if file.Exists(cniBinPath) {
+		if err := os.Remove(cniBinPath); err != nil {
 			return err
 		}
 	}
@@ -260,7 +262,7 @@ func writeCNIConfig(ctx context.Context, mbCNIConfig []byte) (string, error) {
 // If configured as chained CNI plugin, waits indefinitely for a main CNI config file to exist before returning
 // Or until cancelled by parent context
 func getCNIConfigFilepath(ctx context.Context) (string, error) {
-	watcher, fileModified, errChan, err := util.CreateFileWatcher(CNIConfigDir)
+	watcher, fileModified, errChan, err := util.CreateFileWatcher(config.CNIConfigDir)
 	if err != nil {
 		return "", err
 	}
@@ -268,9 +270,9 @@ func getCNIConfigFilepath(ctx context.Context) (string, error) {
 		_ = watcher.Close()
 	}()
 
-	filename, err := getDefaultCNINetwork(CNIConfigDir)
+	filename, err := getDefaultCNINetwork(config.CNIConfigDir)
 	for len(filename) == 0 {
-		filename, err = getDefaultCNINetwork(CNIConfigDir)
+		filename, err = getDefaultCNINetwork(config.CNIConfigDir)
 		if err == nil {
 			break
 		}
@@ -279,7 +281,7 @@ func getCNIConfigFilepath(ctx context.Context) (string, error) {
 		}
 	}
 
-	cniConfigFilepath := filepath.Join(CNIConfigDir, filename)
+	cniConfigFilepath := filepath.Join(config.CNIConfigDir, filename)
 
 	for !file.Exists(cniConfigFilepath) {
 		if strings.HasSuffix(cniConfigFilepath, ".conf") && file.Exists(cniConfigFilepath+"list") {
@@ -307,7 +309,7 @@ func getCNIConfigFilepath(ctx context.Context) (string, error) {
 func sleepCheckInstall(ctx context.Context, cniConfigFilepath string) error {
 	// Create file watcher before checking for installation
 	// so that no file modifications are missed while and after checking
-	watcher, fileModified, errChan, err := util.CreateFileWatcher(CNIConfigDir)
+	watcher, fileModified, errChan, err := util.CreateFileWatcher(config.CNIConfigDir)
 	if err != nil {
 		return err
 	}
@@ -342,24 +344,24 @@ func sleepCheckInstall(ctx context.Context, cniConfigFilepath string) error {
 func copyBinaries() error {
 	srcFile := "/app/merbridge-cni"
 
-	if file.IsDirWriteable(CNIBinDir) != nil {
-		return fmt.Errorf("directory %s is not writable", CNIBinDir)
+	if file.IsDirWriteable(config.CNIBinDir) != nil {
+		return fmt.Errorf("directory %s is not writable", config.CNIBinDir)
 	}
-	err := file.AtomicCopy(srcFile, CNIBinDir, "merbridge-cni")
+	err := file.AtomicCopy(srcFile, config.CNIBinDir, "merbridge-cni")
 	if err != nil {
 		return err
 	}
-	log.Infof("Copied %s to %s.", srcFile, CNIBinDir)
+	log.Infof("Copied %s to %s.", srcFile, config.CNIBinDir)
 	return nil
 }
 
 // checkInstall returns an error if an invalid CNI configuration is detected
 func checkInstall(cniConfigFilepath string) error {
-	defaultCNIConfigFilename, err := getDefaultCNINetwork(CNIConfigDir)
+	defaultCNIConfigFilename, err := getDefaultCNINetwork(config.CNIConfigDir)
 	if err != nil {
 		return err
 	}
-	defaultCNIConfigFilepath := filepath.Join(CNIConfigDir, defaultCNIConfigFilename)
+	defaultCNIConfigFilepath := filepath.Join(config.CNIConfigDir, defaultCNIConfigFilename)
 	if defaultCNIConfigFilepath != cniConfigFilepath {
 		return fmt.Errorf("cni config file %s preempted by %s", cniConfigFilepath, defaultCNIConfigFilepath)
 	}
@@ -438,7 +440,7 @@ func createKubeconfigFile(saToken string) (kubeconfigFilepath string, err error)
 		return "", err
 	}
 
-	kubeconfigFilepath = filepath.Join(CNIConfigDir, kubeConfigFileName)
+	kubeconfigFilepath = filepath.Join(config.CNIConfigDir, kubeConfigFileName)
 	log.Infof("write kubeconfig file %s with: \n%+v", kubeconfigFilepath, kcbbToPrint.String())
 	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), os.FileMode(0600)); err != nil {
 		return "", err

@@ -63,6 +63,19 @@ Merbridge args command
 - --ips-file
 - {{ .Values.ipsFilePath }}
 - --use-reconnect={{ if eq .Values.mode "istio" }}true{{ else }}false{{ end }}
+- --cni-mode={{ .Values.cniMode }}
+{{- if ne .Values.mountPath.proc "/host/proc" }}
+- --host-proc={{ .Values.mountPath.proc }}
+{{- end }}
+{{- if ne .Values.mountPath.cniBin "/host/opt/cni/bin" }}
+- --cni-bin-dir={{ .Values.mountPath.cniBin }}
+{{- end }}
+{{- if ne .Values.mountPath.cniConfig "/host/etc/cni/net.d" }}
+- --cni-config-dir={{ .Values.mountPath.cniConfig }}
+{{- end }}
+{{- if ne .Values.mountPath.varRun "/host/var/run" }}
+- --host-var-run={{ .Values.mountPath.varRun }}
+{{- end }}
 {{- end }}
 
 {{/*

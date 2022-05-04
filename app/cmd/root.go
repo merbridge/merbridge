@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"strings"
 	"syscall"
@@ -39,7 +40,7 @@ var rootCmd = &cobra.Command{
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.EnableCNI {
-			s := cniserver.NewServer("/host/var/run/merbridge-cni.sock", "/sys/fs/bpf")
+			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
@@ -87,8 +88,12 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.UseReconnect, "use-reconnect", "r", true, "Use re-connect mode as same-node acceleration")
 	rootCmd.PersistentFlags().BoolVarP(&config.Debug, "debug", "d", false, "Debug mode")
 	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Kubernetes in Kind mode")
-	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
 	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node ips file name")
+	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
+	rootCmd.PersistentFlags().StringVar(&config.HostProc, "host-proc", "/host/proc", "/proc mount path")
+	rootCmd.PersistentFlags().StringVar(&config.CNIBinDir, "cni-bin-dir", "/host/opt/cni/bin", "/opt/cni/bin mount path")
+	rootCmd.PersistentFlags().StringVar(&config.CNIConfigDir, "cni-config-dir", "/host/etc/cni/net.d", "/etc/cni/net.d mount path")
+	rootCmd.PersistentFlags().StringVar(&config.HostVarRun, "host-var-run", "/host/var/run", "/var/run mount path")
 }
 
 func installCNI(ctx context.Context) {

@@ -15,6 +15,7 @@ spec:
       labels:
         {{- include "merbridge.labels" . | nindent 8 }}
     spec:
+      hostNetwork: true
       containers:
       - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -40,6 +41,15 @@ spec:
             name: sys-fs-cgroup
           - mountPath: /host/ips
             name: host-ips
+          - mountPath: {{ .Values.mountPath.cniBin }}
+            name: cni-bin-dir
+          - mountPath: {{ .Values.mountPath.cniConfig }}
+            name: cni-config-dir
+          - mountPath: {{ .Values.mountPath.proc }}
+            name: host-proc
+          - mountPath: {{ .Values.mountPath.varRun }}
+            name: host-var-run
+            mountPropagation: Bidirectional
       initContainers:
       - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -58,7 +68,7 @@ spec:
         volumeMounts:
           - mountPath: /host/ips
             name: host-ips
-          - mountPath: /host/proc
+          - mountPath: {{ .Values.mountPath.proc }}
             name: host-proc
       dnsPolicy: {{ .Values.dnsPolicy }}
       nodeSelector:
@@ -80,3 +90,12 @@ spec:
         name: host-proc
       - emptyDir: {}
         name: host-ips
+      - hostPath:
+          path: /opt/cni/bin
+        name: cni-bin-dir
+      - hostPath:
+          path: /etc/cni/net.d
+        name: cni-config-dir
+      - hostPath:
+          path: /var/run
+        name: host-var-run

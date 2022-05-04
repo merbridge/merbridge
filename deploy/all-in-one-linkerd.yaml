@@ -59,6 +59,7 @@ spec:
       labels:
         app: merbridge
     spec:
+      hostNetwork: true
       containers:
       - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
@@ -70,6 +71,7 @@ spec:
         - --ips-file
         - /host/ips/ips.txt
         - --use-reconnect=false
+        - --cni-mode=false
         lifecycle:
           preStop:
             exec:
@@ -91,6 +93,15 @@ spec:
             name: sys-fs-cgroup
           - mountPath: /host/ips
             name: host-ips
+          - mountPath: /host/opt/cni/bin
+            name: cni-bin-dir
+          - mountPath: /host/etc/cni/net.d
+            name: cni-config-dir
+          - mountPath: /host/proc
+            name: host-proc
+          - mountPath: /host/var/run
+            name: host-var-run
+            mountPropagation: Bidirectional
       initContainers:
       - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
@@ -133,3 +144,12 @@ spec:
         name: host-proc
       - emptyDir: {}
         name: host-ips
+      - hostPath:
+          path: /opt/cni/bin
+        name: cni-bin-dir
+      - hostPath:
+          path: /etc/cni/net.d
+        name: cni-config-dir
+      - hostPath:
+          path: /var/run
+        name: host-var-run

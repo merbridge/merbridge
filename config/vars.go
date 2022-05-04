@@ -29,4 +29,8 @@ var (
 	Debug         = false
 	EnableCNI     = false
 	IsKind        = false // is Run Kubernetes in Docker
+	HostProc      string
+	CNIBinDir     string
+	CNIConfigDir  string
+	HostVarRun    string
 )
