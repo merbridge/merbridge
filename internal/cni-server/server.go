@@ -21,10 +21,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/gorilla/mux"
 
+	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/config/constants"
 )
 
@@ -43,7 +45,7 @@ type server struct {
 // the path this the unix path to listen.
 func NewServer(unixSockPath string, bpfMountPath string) Server {
 	if unixSockPath == "" {
-		unixSockPath = "/var/run/merbridge-cni.sock"
+		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
 	if bpfMountPath == "" {
 		bpfMountPath = "/sys/fs/bpf"

@@ -7,6 +7,7 @@ fullname: merbridge
 namespace: istio-system
 mode: istio
 ipsFilePath: /host/ips/ips.txt
+cniMode: false
 
 # some settings of deployment
 image:
@@ -30,5 +31,10 @@ resources:
     request:
       cpu: 100m
       memory: 50Mi
+mountPath:
+  proc: /host/proc
+  cniBin: /host/opt/cni/bin
+  cniConfig: /host/etc/cni/net.d
+  varRun: /host/var/run
 dnsPolicy: ClusterFirst
 revisionHistoryLimit: 10

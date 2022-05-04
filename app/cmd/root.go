@@ -16,10 +16,14 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"path"
 	"runtime"
 	"strings"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -35,10 +39,13 @@ var rootCmd = &cobra.Command{
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s := cniserver.NewServer("/var/run/merbridge-cni.sock", "/sys/fs/bpf")
-		if err := s.Start(); err != nil {
-			log.Fatal(err)
-			return err
+		if config.EnableCNI {
+			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
+			if err := s.Start(); err != nil {
+				log.Fatal(err)
+				return err
+			}
+			installCNI(cmd.Context())
 		}
 		// todo wait for stop
 		if err := controller.Run(); err != nil {
@@ -82,4 +89,30 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.Debug, "debug", "d", false, "Debug mode")
 	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Kubernetes in Kind mode")
 	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node ips file name")
+	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
+	rootCmd.PersistentFlags().StringVar(&config.HostProc, "host-proc", "/host/proc", "/proc mount path")
+	rootCmd.PersistentFlags().StringVar(&config.CNIBinDir, "cni-bin-dir", "/host/opt/cni/bin", "/opt/cni/bin mount path")
+	rootCmd.PersistentFlags().StringVar(&config.CNIConfigDir, "cni-config-dir", "/host/etc/cni/net.d", "/etc/cni/net.d mount path")
+	rootCmd.PersistentFlags().StringVar(&config.HostVarRun, "host-var-run", "/host/var/run", "/var/run mount path")
+}
+
+func installCNI(ctx context.Context) {
+	installer := cniserver.NewInstaller()
+	go func() {
+		if err := installer.Run(ctx); err != nil {
+			log.Error(err)
+		}
+		if err := installer.Cleanup(); err != nil {
+			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
+		}
+	}()
+
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+		<-ch
+		if err := installer.Cleanup(); err != nil {
+			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
+		}
+	}()
 }

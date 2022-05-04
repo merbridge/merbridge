@@ -41,33 +41,6 @@ import (
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func netnsEthsGetIPs(nsname string) []net.Addr {
-	outAddrs := []net.Addr{}
-	netNS, err := ns.GetNS(nsname)
-	if err != nil {
-		log.Errorf("get ns %s error", nsname)
-		return outAddrs
-	}
-	err = netNS.Do(func(_ ns.NetNS) error {
-		ifaces, _ := net.Interfaces()
-		for _, iface := range ifaces {
-			if iface.Name == "lo" {
-				continue
-			}
-			addrs, err := iface.Addrs()
-			if err != nil || len(addrs) == 0 {
-				continue
-			}
-			outAddrs = append(outAddrs, addrs...)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Errorf("get netns %s ip addresses error: %v", nsname, err)
-	}
-	return outAddrs
-}
-
 func netnsPairEthDo(nsname string, f func(name string, index int) error) error {
 	netNS, err := ns.GetNS(nsname)
 	if err != nil {
@@ -85,7 +58,7 @@ func netnsPairEthDo(nsname string, f func(name string, index int) error) error {
 				continue
 			}
 
-			buf := bytes.NewBuffer(nil)
+			buf := new(bytes.Buffer)
 			c := exec.Command("sh", "-c", fmt.Sprintf("ip link show %s | awk 'NR<2{print $2}' | tr ':' ' ' | awk -F '@if' '{print $2}'", iface.Name))
 			c.Stdout = buf
 			if err := c.Run(); err != nil {
@@ -156,68 +129,25 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
-	addrs := netnsEthsGetIPs(args.Netns)
-	if len(addrs) != 1 {
-		return fmt.Errorf("get ip address of %s error: res: %v, merbridge only support single ip address", args.Netns, addrs)
-	}
-	lc := net.ListenConfig{
-		Control: func(network, address string, conn syscall.RawConn) error {
-			var operr error
-			if err := conn.Control(func(fd uintptr) {
-				m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
-				if err != nil {
-					operr = err
-					return
-				}
-				var ip uint32
-				switch v := addrs[0].(type) { // todo instead of hash
-				case *net.IPNet: // nolint: typecheck
-					ip, err = linux.IP2Linux(v.IP.String())
-				case *net.IPAddr: // nolint: typecheck
-					ip, err = linux.IP2Linux(v.String())
-				}
-				if err != nil {
-					operr = err
-					return
-				}
-				var key uint32 = getMarkKeyOfNetns(args.Netns)
-				operr = m.Update(key, ip, ebpf.UpdateAny)
-				if operr != nil {
-					return
-				}
-				operr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_MARK, int(key))
-			}); err != nil {
-				return err
-			}
-			return operr
-		},
-	}
-	netNS, err := ns.GetNS(args.Netns)
+	netNS, err := ns.GetNS("/host" + args.Netns)
 	if err != nil {
 		log.Errorf("get ns %s error", args.Netns)
 		return err
 	}
-	err = netNS.Do(func(nn ns.NetNS) error {
-		l, err := lc.Listen(context.Background(), "tcp", "0.0.0.0:39807")
-		go func() {
-			// keep listener
-			for {
-				_, err := l.Accept()
-				if err != nil {
-					// only break loop if error.
-					break
-				}
-			}
-		}()
-		return err
+	err = netNS.Do(func(_ ns.NetNS) error {
+		// listen on 39807
+		return s.buildListener(netNS.Path())
 	})
 	if err != nil {
+		log.Errorf("Failed to build listener for %s: %v", args.Netns, err)
 		return err
 	}
-	err = netnsPairEthDo(args.Netns, func(name string, index int) error {
+	// attach xdp to the veth pair
+	err = netnsPairEthDo(netNS.Path(), func(name string, index int) error {
 		xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
 		// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
 		if err != nil {
+			log.Errorf("Failed to load %s: %v", path.Join(s.bpfMountPath, "mb_xdp"), err)
 			return err
 		}
 
@@ -227,6 +157,7 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 			Flags:     link.XDPGenericMode,
 		})
 		if err != nil {
+			log.Errorf("Failed to attach xdp to interface (index: %d): %v", index, err)
 			return err
 		}
 		p := getXDPPinnedPath(s.bpfMountPath, string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME), name)
@@ -250,3 +181,154 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 	key := getMarkKeyOfNetns(args.Netns)
 	return m.Delete(key)
 }
+
+// listen on 39807
+func (s *server) buildListener(netns string) error {
+	addrs := []net.Addr{}
+	ifaces, _ := net.Interfaces()
+	for _, iface := range ifaces {
+		if iface.Name == "lo" {
+			continue
+		}
+		ifAddrs, err := iface.Addrs()
+		if err != nil || len(ifAddrs) == 0 {
+			continue
+		}
+		addrs = append(addrs, ifAddrs...)
+	}
+	if len(addrs) == 0 {
+		log.Errorf("no ip address for %s", netns)
+		return nil
+	}
+	if len(addrs) != 1 {
+		log.Warnf("get ip address for %s: res: %v, merbridge only support single ip address", netns, addrs)
+	}
+	lc := s.listenConfig(addrs[0], netns)
+	l, err := lc.Listen(context.Background(), "tcp", "0.0.0.0:39807")
+	if err != nil {
+		return err
+	}
+	go func() {
+		// keep listener
+		for {
+			_, err := l.Accept()
+			if err != nil {
+				// only break loop if error.
+				break
+			}
+		}
+	}()
+	return nil
+}
+
+func (s *server) listenConfig(addr net.Addr, netns string) net.ListenConfig {
+	return net.ListenConfig{
+		Control: func(network, address string, conn syscall.RawConn) error {
+			var operr error
+			if err := conn.Control(func(fd uintptr) {
+				m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
+				if err != nil {
+					operr = err
+					return
+				}
+				var ip uint32
+				switch v := addr.(type) { // todo instead of hash
+				case *net.IPNet: // nolint: typecheck
+					ip, err = linux.IP2Linux(v.IP.String())
+				case *net.IPAddr: // nolint: typecheck
+					ip, err = linux.IP2Linux(v.String())
+				}
+				if err != nil {
+					operr = err
+					return
+				}
+				var key uint32 = getMarkKeyOfNetns(netns)
+				operr = m.Update(key, ip, ebpf.UpdateAny)
+				if operr != nil {
+					return
+				}
+				operr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_MARK, int(key))
+			}); err != nil {
+				return err
+			}
+			return operr
+		},
+	}
+}
+
+// func (s *server) checkExistingPods() error {
+// 	dir, err := os.ReadDir("/host/proc")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	for _, f := range dir {
+// 		if _, err = strconv.Atoi(f.Name()); err == nil {
+// 			netns, err := ns.GetNS(fmt.Sprintf("/host/proc/%s/ns/net", f.Name()))
+// 			if err != nil {
+// 				log.Errorf("Failed to get ns for %s", netns.Path())
+// 				continue
+// 			}
+// 			ignored := false
+// 			if err = netns.Do(func(_ ns.NetNS) error {
+// 				if ignore() {
+// 					// ignore uninjected pods
+// 					ignored = true
+// 					return nil
+// 				}
+// 				log.Infof("build listener for pid(%s)", f.Name())
+// 				// listen on 39807
+// 				return s.buildListener(netns.Path())
+// 			}); err != nil {
+// 				return err
+// 			}
+// 			if !ignored {
+// 				// attach xdp to the veth pair
+// 				if err = netnsPairEthDo(netns.Path(), func(name string, index int) error {
+// 					xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
+// 					// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
+// 					if err != nil {
+// 						log.Errorf("Failed to load %s", path.Join(s.bpfMountPath, "mb_xdp"))
+// 						return err
+// 					}
+
+// 					l, err := link.AttachXDP(link.XDPOptions{
+// 						Program:   xdp,
+// 						Interface: index,
+// 						Flags:     link.XDPGenericMode,
+// 					})
+// 					if err != nil {
+// 						return err
+// 					}
+// 					p := getXDPPinnedPath(s.bpfMountPath, f.Name(), f.Name(), name)
+// 					_ = os.MkdirAll(p, os.ModePerm)
+// 					return l.Pin(path.Join(p, "mb_xdp"))
+// 				}); err != nil {
+// 					return err
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
+
+// func ignore() bool {
+// 	conn1, err := net.Dial("tcp", "0.0.0.0:15001")
+// 	if err != nil {
+// 		// uninjected port
+
+// 		// conn6, err := net.Dial("tcp", "[::]:15001")
+// 		// defer conn6.Close()
+// 		// if err != nil {
+// 		// 	return true
+// 		// }
+// 		return true
+// 	}
+// 	conn1.Close()
+// 	conn2, err := net.Dial("tcp", "0.0.0.0:39807")
+// 	if err != nil {
+// 		return false
+// 	}
+// 	// if it has listened on 39807, do nothing
+// 	conn2.Close()
+// 	return true
+// }

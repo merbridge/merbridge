@@ -26,6 +26,7 @@ RUN go mod download
 ADD . .
 
 RUN go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
+RUN go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
 
 FROM ubuntu:20.04
 
@@ -36,5 +37,6 @@ COPY --from=compiler /usr/local/sbin/bpftool /usr/local/sbin/bpftool
 COPY bpf bpf
 COPY Makefile Makefile
 COPY --from=mbctl /app/dist/mbctl mbctl
+COPY --from=mbctl /app/dist/merbridge-cni merbridge-cni
 
 CMD /app/mbctl
