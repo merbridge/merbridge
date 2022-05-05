@@ -36,11 +36,11 @@ import (
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func RunLocalIPController(client kubernetes.Interface) error {
+func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}) error {
 	var err error
 
 	if err = ebpfs.InitLoadPinnedMap(); err != nil {
-		return fmt.Errorf("load failed: %v", err)
+		return fmt.Errorf("failed to load ebpf maps: %v", err)
 	}
 
 	w := pods.NewWatcher(createLocalIPController(client))
@@ -50,6 +50,14 @@ func RunLocalIPController(client kubernetes.Interface) error {
 	}
 
 	log.Info("Pod Watcher Ready")
+	if config.EnableCNI {
+		// wait for cni ready
+		<-cniReady
+	}
+	if err = ebpfs.AttachMBProgs(); err != nil {
+		return fmt.Errorf("failed to attach ebpf programs: %v", err)
+	}
+
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	<-ch

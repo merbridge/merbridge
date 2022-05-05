@@ -17,7 +17,6 @@ package cniserver
 
 import (
 	"context"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -25,6 +24,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/config/constants"
@@ -63,6 +63,10 @@ func (s *server) Start() error {
 	l, err := net.Listen("unix", s.unixSockPath)
 	if err != nil {
 		log.Fatal("listen error:", err)
+	}
+
+	if err := s.checkAndRepairPodPrograms(); err != nil {
+		log.Errorf("Failed to check existing pods: %v", err)
 	}
 
 	r := mux.NewRouter()

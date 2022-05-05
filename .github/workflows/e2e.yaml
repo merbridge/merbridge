@@ -33,6 +33,7 @@ jobs:
       run: |
         uname -a
         make load
+        make attach
         make clean
     - name: install istio
       run: |
