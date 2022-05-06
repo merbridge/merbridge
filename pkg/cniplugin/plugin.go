@@ -129,7 +129,7 @@ func ignorePod(namespace, name string, pod *plugin.PodInfo) bool {
 func CmdAdd(args *skel.CmdArgs) (err error) {
 	conf, err := parseConfig(args.StdinData)
 	if err != nil {
-		log.Errorf("istio-cni cmdAdd failed to parse config %v %v", string(args.StdinData), err)
+		log.Errorf("merbridge-cni cmdAdd failed to parse config %v %v", string(args.StdinData), err)
 		return err
 	}
 	k8sArgs := plugin.K8sArgs{}

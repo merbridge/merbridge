@@ -49,7 +49,7 @@ func newKubeClient(conf plugin.Config) (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 
-	log.Debugf("istio-cni set up kubernetes client with kubeconfig %s", kubeconfig)
+	log.Debugf("merbridge-cni set up kubernetes client with kubeconfig %s", kubeconfig)
 
 	// Create the clientset
 	return kubernetes.NewForConfig(config)
