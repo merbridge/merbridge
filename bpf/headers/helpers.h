@@ -162,7 +162,8 @@ struct cidr {
 
 static inline int is_in_cidr(struct cidr *c, __u32 ip)
 {
-    return (bpf_htonl(c->net) >> c->mask) == bpf_htonl(ip) >> c->mask;
+    return (bpf_htonl(c->net) >> (32 - c->mask)) ==
+           bpf_htonl(ip) >> (32 - c->mask);
 }
 
 struct pod_config {
