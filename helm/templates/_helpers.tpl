@@ -59,6 +59,7 @@ Merbridge args command
 {{- define "merbridge.cmd.args" -}}
 - /app/mbctl
 - -m
+- --debug={{ .Values.debug }}
 - {{ .Values.mode }}
 - --ips-file
 - {{ .Values.ipsFilePath }}

@@ -23,8 +23,13 @@ jobs:
           push: false
       - name: images
         run: |
-          docker images
-
+          docker save -o merbridge-image-${{ github.sha }}.tar ghcr.io/merbridge/merbridge:${{ github.sha }}
+      - name: Temporarily save Docker image
+        uses: actions/upload-artifact@v2
+        with:
+          name: docker-artifact
+          path: merbridge-image-${{ github.sha }}.tar
+          retention-days: 1
   istio-e2e-docker:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
@@ -49,8 +54,15 @@ jobs:
     - name: setup kind cluster
       run: |
         ./scripts/setup-kind.sh
+    - name: Retrieve saved Docker image
+      uses: actions/download-artifact@v2
+      with:
+        name: docker-artifact
+        path: .
+
     - name: load images
       run: |
+        docker load -i merbridge-image-${{ github.sha }}.tar
         kind load docker-image ghcr.io/merbridge/merbridge:${{ github.sha }} --name merbridge
     - name: install istio
       run: |
@@ -80,8 +92,10 @@ jobs:
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
     - name: install merbridge with docker
       run: |
-        helm install -n istio-system merbridge ./helm --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent
+        helm install -n istio-system merbridge ./helm --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent --set debug=true
         while true; do [ "$(kubectl -n istio-system get po -l app=merbridge | grep '1/1')" = "" ] || break && (echo waiting for merbridge pod ready; sleep 3); done
+        nohup kubectl -n istio-system logs $(kubectl -n istio-system get po -l app=merbridge -o=jsonpath='{..metadata.name}') merbridge -f > mbctl.log &
+        while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
     - name: test connect with Merbridge
       run: |
         set -x
