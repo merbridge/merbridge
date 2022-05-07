@@ -141,6 +141,13 @@ func getPortsFromString(v string) []uint16 {
 func getIPRangesFromString(v string) []cidr {
 	var ranges []cidr
 	for _, vv := range strings.Split(v, ",") {
+		if vv == "*" {
+			ranges = append(ranges, cidr{
+				net:  0,
+				mask: 0,
+			})
+			continue
+		}
 		if p := strings.TrimSpace(vv); p != "" {
 			_, n, err := net.ParseCIDR(vv)
 			if err != nil {
