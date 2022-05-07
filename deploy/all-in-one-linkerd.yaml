@@ -67,6 +67,7 @@ spec:
         args:
         - /app/mbctl
         - -m
+        - --debug=false
         - linkerd
         - --ips-file
         - /host/ips/ips.txt
