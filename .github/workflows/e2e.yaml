@@ -9,9 +9,26 @@ on:
       - '*'
 
 jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'needs-e2e-test') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          tags: ${{ github.sha }}
+          push: false
+      - name: images
+        run: |
+          docker images
+
   istio-e2e:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
+    needs: [docker-build]
     if: ${{ contains(github.event.pull_request.labels.*.name, 'needs-e2e-test') }}
     env: 
       ISTIO_VERSION: '1.12.2'
