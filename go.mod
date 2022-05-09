@@ -15,10 +15,11 @@ require (
 require (
 	github.com/containernetworking/cni v1.1.0
 	github.com/gorilla/mux v1.8.0
+	github.com/pkg/errors v0.9.1
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	istio.io/api v0.0.0-20220415145822-bfb8bb7bb3e2
 	istio.io/istio v0.0.0-20220418011539-64c28815c8a3
-	k8s.io/apimachinery v0.23.6
+	k8s.io/apimachinery v0.24.0
 )
 
 require (
@@ -75,6 +76,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/cel-go v0.11.2 // indirect
+	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/go-containerregistry v0.8.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -125,7 +127,6 @@ require (
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -181,12 +182,12 @@ require (
 	k8s.io/cli-runtime v0.23.5 // indirect
 	k8s.io/component-base v0.23.5 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
+	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
 	k8s.io/kubectl v0.23.5 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/controller-runtime v0.11.2 // indirect
 	sigs.k8s.io/gateway-api v0.4.1-0.20220411164207-d6bbc338d351 // indirect
-	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/kustomize/api v0.10.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.0 // indirect
 	sigs.k8s.io/mcs-api v0.1.0 // indirect
