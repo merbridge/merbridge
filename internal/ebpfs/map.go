@@ -27,9 +27,6 @@ var EbpfLoadPinnedMap *ebpf.Map
 
 func InitLoadPinnedMap() error {
 	var err error
-	if err = LoadMBProgs(config.Mode, config.UseReconnect, config.Debug); err != nil {
-		return err
-	}
 	EbpfLoadPinnedMap, err = ebpf.LoadPinnedMap(config.LocalPodIps, &ebpf.LoadPinOptions{})
 	if err != nil {
 		return fmt.Errorf("load map error: %v", err)

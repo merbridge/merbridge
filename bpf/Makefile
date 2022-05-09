@@ -100,6 +100,8 @@ clean-maps:
 load-getsock: load-map-pair_original_dst
 	sudo bpftool prog load mb_get_sockopts.o $(PROG_MOUNT_PATH)/get_sockopts \
 		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst
+
+attach-getsock:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) getsockopt pinned $(PROG_MOUNT_PATH)/get_sockopts
 
 clean-getsock:
@@ -109,6 +111,8 @@ clean-getsock:
 load-redir: load-map-sock_pair_map
 	sudo bpftool prog load mb_redir.o $(PROG_MOUNT_PATH)/redir \
 		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map
+
+attach-redir:
 	sudo bpftool prog attach pinned $(PROG_MOUNT_PATH)/redir msg_verdict pinned $(PROG_MOUNT_PATH)/sock_pair_map
 
 clean-redir:
@@ -121,6 +125,8 @@ load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-proce
 		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
 		map name mark_pod_ips_map pinned $(PROG_MOUNT_PATH)/mark_pod_ips_map \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip
+
+attach-connect:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) connect4 pinned $(PROG_MOUNT_PATH)/connect
 
 clean-connect:
@@ -133,6 +139,8 @@ load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_ori
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
 		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst \
 		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map
+
+attach-sockops:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) sock_ops pinned $(PROG_MOUNT_PATH)/sockops
 
 clean-sockops:
@@ -141,6 +149,8 @@ clean-sockops:
 
 load-bind:
 	sudo bpftool prog load mb_bind.o $(PROG_MOUNT_PATH)/bind
+
+attach-bind:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) bind4 pinned $(PROG_MOUNT_PATH)/bind
 
 clean-bind:
@@ -150,6 +160,8 @@ clean-bind:
 load-sendmsg: load-map-cookie_original_dst
 	sudo bpftool prog load mb_sendmsg.o $(PROG_MOUNT_PATH)/sendmsg \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst
+
+attach-sendmsg:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) sendmsg4 pinned $(PROG_MOUNT_PATH)/sendmsg
 
 clean-sendmsg:
@@ -159,6 +171,8 @@ clean-sendmsg:
 load-recvmsg: load-map-cookie_original_dst
 	sudo bpftool prog load mb_recvmsg.o $(PROG_MOUNT_PATH)/recvmsg \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst
+
+attach-recvmsg:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) recvmsg4 pinned $(PROG_MOUNT_PATH)/recvmsg
 
 clean-recvmsg:
@@ -176,5 +190,7 @@ clean-xdp:
 load: compile load-from-obj
 
 load-from-obj: load-connect load-sockops load-getsock load-redir load-bind load-sendmsg load-recvmsg load-xdp
+
+attach: attach-connect attach-sockops attach-getsock attach-redir attach-bind attach-sendmsg attach-recvmsg
 
 clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind clean-sendmsg clean-recvmsg clean-xdp

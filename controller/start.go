@@ -26,7 +26,7 @@ import (
 )
 
 // Run start to run controller to watch
-func Run() error {
+func Run(cniReady chan struct{}) error {
 	var err error
 	var client kubernetes.Interface
 
@@ -44,7 +44,7 @@ func Run() error {
 	}
 
 	// Run local ip controller
-	if err = localip.RunLocalIPController(client); err != nil {
+	if err = localip.RunLocalIPController(client, cniReady); err != nil {
 		return fmt.Errorf("run local ip controller error: %v", err)
 	}
 

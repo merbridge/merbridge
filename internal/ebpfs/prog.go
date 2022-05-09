@@ -43,6 +43,21 @@ func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
 	return nil
 }
 
+func AttachMBProgs() error {
+	if os.Getuid() != 0 {
+		return fmt.Errorf("root user in required for this process or container")
+	}
+	cmd := exec.Command("make", "attach")
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+		return fmt.Errorf("unexpected exit code: %d, err: %v", code, err)
+	}
+	return nil
+}
+
 func UnLoadMBProgs() error {
 	cmd := exec.Command("make", "-k", "clean")
 	cmd.Stdout = os.Stdout

@@ -16,8 +16,10 @@ limitations under the License.
 package cniserver
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"net"
@@ -38,6 +40,7 @@ import (
 	"golang.org/x/sys/unix"
 	"istio.io/istio/cni/pkg/plugin"
 
+	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
@@ -256,79 +259,84 @@ func (s *server) listenConfig(addr net.Addr, netns string) net.ListenConfig {
 	}
 }
 
-// func (s *server) checkExistingPods() error {
-// 	dir, err := os.ReadDir("/host/proc")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	for _, f := range dir {
-// 		if _, err = strconv.Atoi(f.Name()); err == nil {
-// 			netns, err := ns.GetNS(fmt.Sprintf("/host/proc/%s/ns/net", f.Name()))
-// 			if err != nil {
-// 				log.Errorf("Failed to get ns for %s", netns.Path())
-// 				continue
-// 			}
-// 			ignored := false
-// 			if err = netns.Do(func(_ ns.NetNS) error {
-// 				if ignore() {
-// 					// ignore uninjected pods
-// 					ignored = true
-// 					return nil
-// 				}
-// 				log.Infof("build listener for pid(%s)", f.Name())
-// 				// listen on 39807
-// 				return s.buildListener(netns.Path())
-// 			}); err != nil {
-// 				return err
-// 			}
-// 			if !ignored {
-// 				// attach xdp to the veth pair
-// 				if err = netnsPairEthDo(netns.Path(), func(name string, index int) error {
-// 					xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
-// 					// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
-// 					if err != nil {
-// 						log.Errorf("Failed to load %s", path.Join(s.bpfMountPath, "mb_xdp"))
-// 						return err
-// 					}
+func (s *server) checkAndRepairPodPrograms() error {
+	hostProc, err := os.ReadDir(config.HostProc)
+	if err != nil {
+		return err
+	}
+	for _, f := range hostProc {
+		if _, err = strconv.Atoi(f.Name()); err == nil {
+			pid := f.Name()
+			netns, err := ns.GetNS(fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid))
+			if err != nil {
+				log.Errorf("Failed to get ns for %s", netns.Path())
+				continue
+			}
+			if skipListening(pid) {
+				// ignore uninjected pods
+				log.Debugf("skip listening for pid(%s)", pid)
+				continue
+			}
+			if err = netns.Do(func(_ ns.NetNS) error {
+				log.Infof("build listener for pid(%s)", pid)
+				// listen on 39807
+				return s.buildListener(netns.Path())
+			}); err != nil {
+				if errors.Is(err, syscall.EADDRINUSE) {
+					// skip if it has listened on 39807
+					continue
+				}
+				return err
+			}
+			// attach xdp to the veth pair
+			if err = netnsPairEthDo(netns.Path(), func(name string, index int) error {
+				xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
+				// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
+				if err != nil {
+					log.Errorf("Failed to load %s: %v", path.Join(s.bpfMountPath, "mb_xdp"), err)
+					return err
+				}
 
-// 					l, err := link.AttachXDP(link.XDPOptions{
-// 						Program:   xdp,
-// 						Interface: index,
-// 						Flags:     link.XDPGenericMode,
-// 					})
-// 					if err != nil {
-// 						return err
-// 					}
-// 					p := getXDPPinnedPath(s.bpfMountPath, f.Name(), f.Name(), name)
-// 					_ = os.MkdirAll(p, os.ModePerm)
-// 					return l.Pin(path.Join(p, "mb_xdp"))
-// 				}); err != nil {
-// 					return err
-// 				}
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
+				l, err := link.AttachXDP(link.XDPOptions{
+					Program:   xdp,
+					Interface: index,
+					Flags:     link.XDPGenericMode,
+				})
+				if err != nil {
+					log.Errorf("Failed to attach xdp to interface (index: %d): %v", index, err)
+					return err
+				}
+				p := getXDPPinnedPath(s.bpfMountPath, pid, pid, name)
+				_ = os.MkdirAll(p, os.ModePerm)
+				return l.Pin(path.Join(p, "mb_xdp"))
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
 
-// func ignore() bool {
-// 	conn1, err := net.Dial("tcp", "0.0.0.0:15001")
-// 	if err != nil {
-// 		// uninjected port
+func skipListening(pid string) bool {
+	b, _ := os.ReadFile(fmt.Sprintf("%s/%s/comm", config.HostProc, pid))
+	comm := string(b)
+	if strings.TrimSpace(comm) != "pilot-agent" {
+		return true
+	}
 
-// 		// conn6, err := net.Dial("tcp", "[::]:15001")
-// 		// defer conn6.Close()
-// 		// if err != nil {
-// 		// 	return true
-// 		// }
-// 		return true
-// 	}
-// 	conn1.Close()
-// 	conn2, err := net.Dial("tcp", "0.0.0.0:39807")
-// 	if err != nil {
-// 		return false
-// 	}
-// 	// if it has listened on 39807, do nothing
-// 	conn2.Close()
-// 	return true
-// }
+	findStr := func(path string, str []byte) bool {
+		f, _ := os.Open(path)
+		defer f.Close()
+		sc := bufio.NewScanner(f)
+		sc.Split(bufio.ScanLines)
+		for sc.Scan() {
+			if bytes.Contains(sc.Bytes(), str) {
+				return true
+			}
+		}
+		return false
+	}
+
+	conn4 := fmt.Sprintf("%s/%s/net/tcp", config.HostProc, pid)
+	return !findStr(conn4, []byte(fmt.Sprintf(": %0.8d:%0.4X %0.8d:%0.4X 0A", 0, 15001, 0, 0)))
+}
