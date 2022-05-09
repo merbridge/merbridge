@@ -338,9 +338,5 @@ func skipListening(pid string) bool {
 	}
 
 	conn4 := fmt.Sprintf("%s/%s/net/tcp", config.HostProc, pid)
-	if !findStr(conn4, []byte(fmt.Sprintf(": %0.8d:%0.4X %0.8d:%0.4X 0A", 0, 15001, 0, 0))) {
-		// uninjected pod
-		return true
-	}
-	return false
+	return !findStr(conn4, []byte(fmt.Sprintf(": %0.8d:%0.4X %0.8d:%0.4X 0A", 0, 15001, 0, 0)))
 }
