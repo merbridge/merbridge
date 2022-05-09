@@ -94,7 +94,7 @@ jobs:
       run: |
         helm install -n istio-system merbridge ./helm --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent --set debug=true
         while true; do [ "$(kubectl -n istio-system get po -l app=merbridge | grep '1/1')" = "" ] || break && (echo waiting for merbridge pod ready; sleep 3); done
-        nohup kubectl -n istio-system logs $(kubectl -n istio-system get po -l app=merbridge -o=jsonpath='{..metadata.name}') merbridge -f > mbctl.log &
+        nohup kubectl -n istio-system logs $(kubectl -n istio-system get po -l app=merbridge -o=jsonpath='{..metadata.name}') merbridge -f | tee mbctl.log &
         while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
     - name: test connect with Merbridge
       run: |

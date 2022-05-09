@@ -66,8 +66,8 @@ spec:
         name: merbridge
         args:
         - /app/mbctl
-        - -m
         - --debug=false
+        - -m
         - linkerd
         - --ips-file
         - /host/ips/ips.txt
