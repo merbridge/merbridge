@@ -267,9 +267,10 @@ func (s *server) checkAndRepairPodPrograms() error {
 	for _, f := range hostProc {
 		if _, err = strconv.Atoi(f.Name()); err == nil {
 			pid := f.Name()
-			netns, err := ns.GetNS(fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid))
+			np := fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid)
+			netns, err := ns.GetNS(np)
 			if err != nil {
-				log.Errorf("Failed to get ns for %s", netns.Path())
+				log.Errorf("Failed to get ns for %s, error: %v", np, err)
 				continue
 			}
 			if skipListening(pid) {
