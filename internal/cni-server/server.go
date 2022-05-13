@@ -36,14 +36,15 @@ type Server interface {
 }
 
 type server struct {
-	unixSockPath string
-	bpfMountPath string
-	stop         chan struct{}
+	unixSockPath     string
+	bpfMountPath     string
+	hardwareCheckSum bool
+	stop             chan struct{}
 }
 
 // NewServer returns a new CNI Server.
 // the path this the unix path to listen.
-func NewServer(unixSockPath string, bpfMountPath string) Server {
+func NewServer(unixSockPath string, bpfMountPath string, hardwareChecksum bool) Server {
 	if unixSockPath == "" {
 		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
@@ -51,8 +52,9 @@ func NewServer(unixSockPath string, bpfMountPath string) Server {
 		bpfMountPath = "/sys/fs/bpf"
 	}
 	return &server{
-		unixSockPath: unixSockPath,
-		bpfMountPath: bpfMountPath,
+		unixSockPath:     unixSockPath,
+		bpfMountPath:     bpfMountPath,
+		hardwareCheckSum: hardwareChecksum,
 	}
 }
 

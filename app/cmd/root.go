@@ -46,7 +46,7 @@ var rootCmd = &cobra.Command{
 
 		cniReady := make(chan struct{}, 1)
 		if config.EnableCNI {
-			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
+			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf", config.HardwareCheckSum)
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
@@ -97,6 +97,14 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Kubernetes in Kind mode")
 	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node ips file name")
 	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
+	// If hardware checksum not enabled, we should disable tx checksum, otherwise,
+	// this can cause problems with Pods communication across hosts (Kubernetes Service logic) when CNI mode enabled.
+	// Turning this off may make network performance worse.
+	// You can check your node with run `ethtool -k eth0 | grep tx-checksum-ipv4`, (eth0 is your NIC interface name).
+	// If it shows like `tx-checksum-ipv4: off [fixed]`, that means you NIC doesn't support hardware checksum,
+	// you should disable hardwareCheckSum.
+	// We are considering the option of using tc instead of xdp and may not need this feature in the future.
+	rootCmd.PersistentFlags().BoolVar(&config.HardwareCheckSum, "hardware-checksum", false, "Enable hardware checksum")
 	rootCmd.PersistentFlags().StringVar(&config.HostProc, "host-proc", "/host/proc", "/proc mount path")
 	rootCmd.PersistentFlags().StringVar(&config.CNIBinDir, "cni-bin-dir", "/host/opt/cni/bin", "/opt/cni/bin mount path")
 	rootCmd.PersistentFlags().StringVar(&config.CNIConfigDir, "cni-config-dir", "/host/etc/cni/net.d", "/etc/cni/net.d mount path")
