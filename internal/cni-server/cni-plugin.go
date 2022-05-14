@@ -298,6 +298,13 @@ func (s *server) checkAndRepairPodPrograms() error {
 			}
 			// attach xdp to the veth pair
 			if err = netnsPairEthDo(netns.Path(), func(name string, index int) error {
+				if !s.hardwareCheckSum {
+					log.Debugf("disable hardware checksum for pid(%s)", pid)
+					c := exec.Command("sh", "-c", fmt.Sprintf("ethtool -K %s tx off", name))
+					if err := c.Run(); err != nil {
+						return fmt.Errorf("disable %s tx off error: %v", name, err)
+					}
+				}
 				xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
 				// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
 				if err != nil {
