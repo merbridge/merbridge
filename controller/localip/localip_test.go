@@ -33,7 +33,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000,
+					15090, 15006, 15001, 15000, 15020,
 				},
 			},
 		},
@@ -45,7 +45,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000,
+					15090, 15006, 15001, 15000, 15020,
 					12345,
 					80,
 				},
@@ -59,7 +59,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000,
+					15090, 15006, 15001, 15000, 15020,
 				},
 				excludeOutRanges: [MaxItemLen]cidr{
 					{
@@ -74,6 +74,24 @@ func Test_parseConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "excludeOutboundIPRanges *",
+			annotations: map[string]string{
+				"traffic.sidecar.istio.io/excludeOutboundIPRanges": "*",
+			},
+			expect: &podConfig{
+				statusPort: 15021,
+				excludeInPorts: [MaxItemLen]uint16{
+					15090, 15006, 15001, 15000, 15020,
+				},
+				excludeOutRanges: [MaxItemLen]cidr{
+					{
+						net:  0,
+						mask: 0,
+					},
+				},
+			},
+		},
+		{
 			name: "excludeOutboundIPRanges invalid",
 			annotations: map[string]string{
 				"traffic.sidecar.istio.io/excludeOutboundIPRanges": "192.168.0.0/16,1721.0.1/20",
@@ -81,7 +99,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000,
+					15090, 15006, 15001, 15000, 15020,
 				},
 				excludeOutRanges: [MaxItemLen]cidr{
 					{

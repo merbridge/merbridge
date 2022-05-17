@@ -53,14 +53,6 @@ static inline int udp4_connect(struct bpf_sock_addr *ctx)
 
 static inline int tcp4_connect(struct bpf_sock_addr *ctx)
 {
-    // u64 bpf_get_current_pid_tgid(void)
-    // Return A 64-bit integer containing the current tgid and
-    //                 pid, and created as such: current_task->tgid << 32
-    //                | current_task->pid.
-    // pid may be thread id, we should use tgid
-    __u32 pid = bpf_get_current_pid_tgid() >> 32; // tgid
-    __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
-
     // todo(kebe7jun) more reliable way to verify,
     if (!is_port_listen_current_ns(ctx, 0, OUT_REDIRECT_PORT)) {
         // bypass normal traffic.
@@ -90,6 +82,8 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
     if (curr_pod_ip == 0) {
         debugf("get current pod ip error");
     }
+    __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
+    __u32 pid;
     if (uid != SIDECAR_USER_ID) {
         if ((ctx->user_ip4 & 0xff) == 0x7f) {
             // app call local, bypass.
@@ -99,6 +93,12 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
         // app call others
         debugf("call from user container: cookie: %d, ip: 0x%x, port: %d",
                cookie, ctx->user_ip4, bpf_htons(ctx->user_port));
+        // u64 bpf_get_current_pid_tgid(void)
+        // Return A 64-bit integer containing the current tgid and
+        //                 pid, and created as such: current_task->tgid << 32
+        //                | current_task->pid.
+        // pid may be thread id, we should use tgid
+        pid = bpf_get_current_pid_tgid() >> 32; // tgid
         // we need redirect it to envoy.
         struct origin_info origin = {
             .ip = ctx->user_ip4,
@@ -190,6 +190,7 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
             debugf("dest ip: 0x%x not in this node, bypass", ctx->user_ip4);
             return 1;
         }
+        pid = bpf_get_current_pid_tgid() >> 32;
         // dst ip is in this node, but not the current pod,
         // it is envoy to envoy connecting.
         struct origin_info origin = {

@@ -82,7 +82,7 @@ func NewInstaller() *Installer {
 
 // Run starts the installation process, verifies the configuration, then sleeps.
 // If an invalid configuration is detected, the installation process will restart to restore a valid state.
-func (in *Installer) Run(ctx context.Context) error {
+func (in *Installer) Run(ctx context.Context, cniReady chan struct{}) error {
 	for {
 		if err := copyBinaries(); err != nil {
 			return err
@@ -99,6 +99,9 @@ func (in *Installer) Run(ctx context.Context) error {
 
 		if in.cniConfigFilepath, err = createCNIConfigFile(ctx); err != nil {
 			return err
+		}
+		if len(cniReady) == 0 {
+			cniReady <- struct{}{}
 		}
 
 		if err = sleepCheckInstall(ctx, in.cniConfigFilepath); err != nil {

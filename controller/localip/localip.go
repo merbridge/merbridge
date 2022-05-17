@@ -36,11 +36,11 @@ import (
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func RunLocalIPController(client kubernetes.Interface) error {
+func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}) error {
 	var err error
 
 	if err = ebpfs.InitLoadPinnedMap(); err != nil {
-		return fmt.Errorf("load failed: %v", err)
+		return fmt.Errorf("failed to load ebpf maps: %v", err)
 	}
 
 	w := pods.NewWatcher(createLocalIPController(client))
@@ -50,6 +50,14 @@ func RunLocalIPController(client kubernetes.Interface) error {
 	}
 
 	log.Info("Pod Watcher Ready")
+	if config.EnableCNI {
+		// wait for cni ready
+		<-cniReady
+	}
+	if err = ebpfs.AttachMBProgs(); err != nil {
+		return fmt.Errorf("failed to attach ebpf programs: %v", err)
+	}
+
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	<-ch
@@ -141,6 +149,13 @@ func getPortsFromString(v string) []uint16 {
 func getIPRangesFromString(v string) []cidr {
 	var ranges []cidr
 	for _, vv := range strings.Split(v, ",") {
+		if vv == "*" {
+			ranges = append(ranges, cidr{
+				net:  0,
+				mask: 0,
+			})
+			continue
+		}
 		if p := strings.TrimSpace(vv); p != "" {
 			_, n, err := net.ParseCIDR(vv)
 			if err != nil {
@@ -170,7 +185,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		}
 	}
 	pod.statusPort = uint16(statusPort)
-	excludeInboundPorts := []uint16{15090, 15006, 15001, 15000} // todo changeme
+	excludeInboundPorts := []uint16{15090, 15006, 15001, 15000, 15020} // todo changeme
 	if v, ok := annotations["traffic.sidecar.istio.io/excludeInboundPorts"]; ok {
 		excludeInboundPorts = append(excludeInboundPorts, getPortsFromString(v)...)
 	}
