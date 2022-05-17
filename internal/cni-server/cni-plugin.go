@@ -147,6 +147,13 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 	}
 	// attach xdp to the veth pair
 	err = netnsPairEthDo(netNS.Path(), func(name string, index int) error {
+		if !s.hardwareCheckSum {
+			log.Debugf("disable hardware checksum for pod(%s/%s)", string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME))
+			c := exec.Command("sh", "-c", fmt.Sprintf("ethtool -K %s tx off", name))
+			if err := c.Run(); err != nil {
+				return fmt.Errorf("disable %s tx off error: %v", name, err)
+			}
+		}
 		xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
 		// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
 		if err != nil {
@@ -267,9 +274,10 @@ func (s *server) checkAndRepairPodPrograms() error {
 	for _, f := range hostProc {
 		if _, err = strconv.Atoi(f.Name()); err == nil {
 			pid := f.Name()
-			netns, err := ns.GetNS(fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid))
+			np := fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid)
+			netns, err := ns.GetNS(np)
 			if err != nil {
-				log.Errorf("Failed to get ns for %s", netns.Path())
+				log.Errorf("Failed to get ns for %s, error: %v", np, err)
 				continue
 			}
 			if skipListening(pid) {
@@ -290,6 +298,13 @@ func (s *server) checkAndRepairPodPrograms() error {
 			}
 			// attach xdp to the veth pair
 			if err = netnsPairEthDo(netns.Path(), func(name string, index int) error {
+				if !s.hardwareCheckSum {
+					log.Debugf("disable hardware checksum for pid(%s)", pid)
+					c := exec.Command("sh", "-c", fmt.Sprintf("ethtool -K %s tx off", name))
+					if err := c.Run(); err != nil {
+						return fmt.Errorf("disable %s tx off error: %v", name, err)
+					}
+				}
 				xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
 				// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
 				if err != nil {
