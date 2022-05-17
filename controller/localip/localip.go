@@ -185,7 +185,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 		}
 	}
 	pod.statusPort = uint16(statusPort)
-	excludeInboundPorts := []uint16{15090, 15006, 15001, 15000} // todo changeme
+	excludeInboundPorts := []uint16{15090, 15006, 15001, 15000, 15020} // todo changeme
 	if v, ok := annotations["traffic.sidecar.istio.io/excludeInboundPorts"]; ok {
 		excludeInboundPorts = append(excludeInboundPorts, getPortsFromString(v)...)
 	}
