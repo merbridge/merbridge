@@ -25,22 +25,23 @@ __section("cgroup/recvmsg4") int mb_recvmsg4(struct bpf_sock_addr *ctx)
     // only works on istio
     return 1;
 #endif
+    if (bpf_htons(ctx->user_port) != DNS_CAPTURE_PORT) {
+        return 1;
+    }
     if (!(is_port_listen_current_ns(ctx, 0, OUT_REDIRECT_PORT) &&
           is_port_listen_udp_current_ns(ctx, 0x7f000001, DNS_CAPTURE_PORT))) {
         // printk("not from pod");
         return 1;
     }
     __u64 cookie = bpf_get_socket_cookie_addr(ctx);
-    if (bpf_htons(ctx->user_port) == DNS_CAPTURE_PORT) {
-        struct origin_info *origin = (struct origin_info *)bpf_map_lookup_elem(
-            &cookie_original_dst, &cookie);
-        if (origin) {
-            ctx->user_port = origin->port;
-            ctx->user_ip4 = origin->ip;
-            debugf("successfully deal DNS redirect query");
-        } else {
-            printk("failed get origin");
-        }
+    struct origin_info *origin = (struct origin_info *)bpf_map_lookup_elem(
+        &cookie_original_dst, &cookie);
+    if (origin) {
+        ctx->user_port = origin->port;
+        ctx->user_ip4 = origin->ip;
+        debugf("successfully deal DNS redirect query");
+    } else {
+        printk("failed get origin");
     }
     return 1;
 }
