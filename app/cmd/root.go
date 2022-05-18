@@ -40,7 +40,7 @@ var rootCmd = &cobra.Command{
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := ebpfs.LoadMBProgs(config.Mode, config.UseReconnect, config.Debug); err != nil {
+		if err := ebpfs.LoadMBProgs(config.Mode, config.UseReconnect, config.Debug, config.DNSRedirection); err != nil {
 			return fmt.Errorf("failed to load ebpf programs: %v", err)
 		}
 
@@ -97,6 +97,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Kubernetes in Kind mode")
 	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node ips file name")
 	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
+	rootCmd.PersistentFlags().BoolVar(&config.DNSRedirection, "dns-redir", false, "Enable DNS message redirection for Istio service mesh")
 	// If hardware checksum not enabled, we should disable tx checksum, otherwise,
 	// this can cause problems with Pods communication across hosts (Kubernetes Service logic) when CNI mode enabled.
 	// Turning this off may make network performance worse.

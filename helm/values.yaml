@@ -8,6 +8,7 @@ namespace: istio-system
 mode: istio
 ipsFilePath: /host/ips/ips.txt
 cniMode: false
+dnsRedir: false
 
 # some settings of deployment
 image:

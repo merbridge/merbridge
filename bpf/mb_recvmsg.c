@@ -25,6 +25,8 @@ __section("cgroup/recvmsg4") int mb_recvmsg4(struct bpf_sock_addr *ctx)
     // only works on istio
     return 1;
 #endif
+
+#ifdef DNS_REDIR
     if (bpf_htons(ctx->user_port) != DNS_CAPTURE_PORT) {
         return 1;
     }
@@ -43,6 +45,7 @@ __section("cgroup/recvmsg4") int mb_recvmsg4(struct bpf_sock_addr *ctx)
     } else {
         printk("failed get origin");
     }
+#endif
     return 1;
 }
 

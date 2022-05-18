@@ -26,6 +26,7 @@ var (
 	Mode             string
 	IpsFile          string
 	UseReconnect     = true
+	DNSRedirection   = false
 	Debug            = false
 	EnableCNI        = false
 	HardwareCheckSum = false
