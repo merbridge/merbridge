@@ -1,3 +1,16 @@
+# Copyright © 2022 Merbridge Authors
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #/bin/sh
 
 usage() {
@@ -74,11 +87,12 @@ declare -a podlist
 
 get_pod_list() {
         if [ "$1" = "all" ] ;then
-                podlist=( `kubectl get pods -n istio-system | grep merbridge | awk '{print $1}'` )
+                podlist=( `kubectl get pods -n istio-system -l app=merbridge | awk '{print $1}'` )
         else
-                podlist=( `kubectl get pods -n istio-system -o wide | grep $1 | grep merbridge | awk '{print $1}'` )
+                podlist=( `kubectl get pods -n istio-system -o wide -l app=merbridge --field-selector spec.nodeName=$1 | awk '{print $1}'` )
         fi
 
+	podlist=("${podlist[@]:1}")
         if [ ${#podlist[@]} -eq 0 ]; then
                echo "\"$1\" node/nodes is/are not running merbridge pod. Please provide connected worker node name or \"all\""
                exit 1
