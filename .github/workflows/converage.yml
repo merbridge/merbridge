@@ -1,0 +1,25 @@
+name: Converage
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  go-unit-test:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.17
+    - name: Test
+      run: go test -v -coverprofile=coverage.txt ./...
+    - uses: codecov/codecov-action@v3.1.0
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+        files: ./coverage.txt # optional
+        flags: unittests # optional
+        name: codecov-umbrella # optional
+        fail_ci_if_error: true # optional (default = false)
+        verbose: true # optional (default = false)
