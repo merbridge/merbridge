@@ -50,7 +50,7 @@ type server struct {
 
 // NewServer returns a new CNI Server.
 // the path this the unix path to listen.
-func NewServer(unixSockPath string, bpfMountPath string, hardwareChecksum bool) Server {
+func NewServer(unixSockPath string, bpfMountPath string) Server {
 	if unixSockPath == "" {
 		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
