@@ -34,12 +34,16 @@ limitations under the License.
 #define __section(NAME) __attribute__((section(NAME), used))
 #endif
 
-struct bpf_map {
+#define PIN_GLOBAL_NS 2
+
+struct bpf_elf_map {
     __u32 type;
-    __u32 key_size;
-    __u32 value_size;
-    __u32 max_entries;
-    __u32 map_flags;
+    __u32 size_key;
+    __u32 size_value;
+    __u32 max_elem;
+    __u32 flags;
+    __u32 id;
+    __u32 pinning;
 };
 
 static __u64 (*bpf_get_current_pid_tgid)() = (void *)
@@ -55,12 +59,12 @@ static __u64 (*bpf_get_socket_cookie_ops)(struct bpf_sock_ops *skops) = (void *)
     BPF_FUNC_get_socket_cookie;
 static __u64 (*bpf_get_socket_cookie_addr)(struct bpf_sock_addr *ctx) = (void *)
     BPF_FUNC_get_socket_cookie;
-static void *(*bpf_map_lookup_elem)(struct bpf_map *map, const void *key) =
+static void *(*bpf_map_lookup_elem)(struct bpf_elf_map *map, const void *key) =
     (void *)BPF_FUNC_map_lookup_elem;
-static __u64 (*bpf_map_update_elem)(struct bpf_map *map, const void *key,
+static __u64 (*bpf_map_update_elem)(struct bpf_elf_map *map, const void *key,
                                     const void *value, __u64 flags) = (void *)
     BPF_FUNC_map_update_elem;
-static __u64 (*bpf_map_delete_elem)(struct bpf_map *map, const void *key) =
+static __u64 (*bpf_map_delete_elem)(struct bpf_elf_map *map, const void *key) =
     (void *)BPF_FUNC_map_delete_elem;
 static struct bpf_sock *(*bpf_sk_lookup_tcp)(
     void *ctx, struct bpf_sock_tuple *tuple, __u32 tuple_size, __u64 netns,
@@ -71,13 +75,19 @@ static struct bpf_sock *(*bpf_sk_lookup_udp)(
 static long (*bpf_sk_release)(struct bpf_sock *sock) = (void *)
     BPF_FUNC_sk_release;
 static long (*bpf_sock_hash_update)(
-    struct bpf_sock_ops *skops, struct bpf_map *map, void *key,
+    struct bpf_sock_ops *skops, struct bpf_elf_map *map, void *key,
     __u64 flags) = (void *)BPF_FUNC_sock_hash_update;
-static long (*bpf_msg_redirect_hash)(struct sk_msg_md *md, struct bpf_map *map,
-                                     void *key, __u64 flags) = (void *)
-    BPF_FUNC_msg_redirect_hash;
+static long (*bpf_msg_redirect_hash)(
+    struct sk_msg_md *md, struct bpf_elf_map *map, void *key,
+    __u64 flags) = (void *)BPF_FUNC_msg_redirect_hash;
 static long (*bpf_bind)(struct bpf_sock_addr *ctx, struct sockaddr_in *addr,
                         int addr_len) = (void *)BPF_FUNC_bind;
+static long (*bpf_l4_csum_replace)(struct __sk_buff *skb, __u32 offset,
+                                   __u64 from, __u64 to, __u64 flags) = (void *)
+    BPF_FUNC_l4_csum_replace;
+static long (*bpf_skb_store_bytes)(struct __sk_buff *skb, __u32 offset,
+                                   const void *from, __u32 len, __u64 flags) =
+    (void *)BPF_FUNC_skb_store_bytes;
 
 #ifdef PRINTNL
 #define PRINT_SUFFIX "\n"
