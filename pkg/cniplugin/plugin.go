@@ -137,24 +137,21 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 		return err
 	}
 
-	if ignore(conf, &k8sArgs) {
-		// ignore uninjected pods
-		return nil
-	}
-
-	httpc := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", "/var/run/merbridge-cni.sock")
+	if !ignore(conf, &k8sArgs) {
+		httpc := http.Client{
+			Transport: &http.Transport{
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					return net.Dial("unix", "/var/run/merbridge-cni.sock")
+				},
 			},
-		},
-	}
-	http.DefaultClient = &httpc
-	bs, _ := json.Marshal(args)
-	body := bytes.NewReader(bs)
-	_, err = http.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
-	if err != nil {
-		return err
+		}
+		http.DefaultClient = &httpc
+		bs, _ := json.Marshal(args)
+		body := bytes.NewReader(bs)
+		_, err = http.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
+		if err != nil {
+			return err
+		}
 	}
 
 	var result *cniv1.Result
