@@ -264,13 +264,12 @@ func (s *server) attachTC(netns, dev string) error {
 	err := cmd.Run()
 	hasCls := false
 	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-		o, _ := cmd.Output()
-		log.Errorf("Add clsact to %s failed: %s", dev, string(o))
+		log.Errorf("Add clsact to %s failed: unexpected exit code: %d, err: %v", dev, code, err)
 		// TODO(dddddai): check if clsact exists
 		hasCls = true
 	}
 
-	obj := "/app/bpf/mb_tc.o"
+	obj := "bpf/mb_tc.o"
 
 	cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter add prio 66 dev %s ingress bpf da obj %s sec classifier_ingress", dev, obj))
 	err = cmd.Run()
