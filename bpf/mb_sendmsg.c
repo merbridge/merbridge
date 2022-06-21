@@ -25,6 +25,8 @@ __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
     // only works on istio
     return 1;
 #endif
+
+#ifdef DNS_REDIR
     if (bpf_htons(ctx->user_port) != 53) {
         return 1;
     }
@@ -48,6 +50,7 @@ __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
         ctx->user_port = bpf_htons(DNS_CAPTURE_PORT);
         ctx->user_ip4 = 0x100007f;
     }
+#endif
     return 1;
 }
 

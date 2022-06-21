@@ -21,7 +21,7 @@ import (
 	"os/exec"
 )
 
-func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
+func LoadMBProgs(meshMode string, useReconnect bool, debug bool, dnsRedir bool) error {
 	if os.Getuid() != 0 {
 		return fmt.Errorf("root user in required for this process or container")
 	}
@@ -33,6 +33,9 @@ func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
 	}
 	if useReconnect {
 		cmd.Env = append(cmd.Env, "USE_RECONNECT=1")
+	}
+	if dnsRedir {
+		cmd.Env = append(cmd.Env, "DNS_REDIR=1")
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

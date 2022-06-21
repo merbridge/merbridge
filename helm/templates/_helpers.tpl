@@ -64,6 +64,7 @@ Merbridge args command
 - {{ .Values.ipsFilePath }}
 - --use-reconnect={{ if eq .Values.mode "istio" }}true{{ else }}false{{ end }}
 - --cni-mode={{ .Values.cniMode }}
+- --dns-redir={{ .Values.dnsRedir }}
 {{- if ne .Values.mountPath.proc "/host/proc" }}
 - --host-proc={{ .Values.mountPath.proc }}
 {{- end }}

@@ -72,6 +72,7 @@ spec:
         - /host/ips/ips.txt
         - --use-reconnect=false
         - --cni-mode=false
+        - --dns-redir=true
         lifecycle:
           preStop:
             exec:
