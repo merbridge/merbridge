@@ -18,20 +18,19 @@ package config
 const (
 	ModeIstio   = "istio"
 	ModeLinkerd = "linkerd"
-	LocalPodIps = "/sys/fs/bpf/local_pod_ips"
+	LocalPodIps = "/sys/fs/bpf/tc/globals/local_pod_ips"
 )
 
 var (
-	CurrentNodeIP    string
-	Mode             string
-	IpsFile          string
-	UseReconnect     = true
-	Debug            = false
-	EnableCNI        = false
-	HardwareCheckSum = false
-	IsKind           = false // is Run Kubernetes in Docker
-	HostProc         string
-	CNIBinDir        string
-	CNIConfigDir     string
-	HostVarRun       string
+	CurrentNodeIP string
+	Mode          string
+	IpsFile       string
+	UseReconnect  = true
+	Debug         = false
+	EnableCNI     = false
+	IsKind        = false // is Run Kubernetes in Docker
+	HostProc      string
+	CNIBinDir     string
+	CNIConfigDir  string
+	HostVarRun    string
 )

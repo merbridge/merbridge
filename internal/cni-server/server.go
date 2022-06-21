@@ -20,7 +20,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -36,15 +39,18 @@ type Server interface {
 }
 
 type server struct {
-	unixSockPath     string
-	bpfMountPath     string
-	hardwareCheckSum bool
-	stop             chan struct{}
+	sync.Mutex
+	unixSockPath string
+	bpfMountPath string
+	// qdiscs is for cleaning up all tc programs when merbridge exits
+	// key: netns, value: qidsc info
+	qdiscs map[string]qdisc
+	stop   chan struct{}
 }
 
 // NewServer returns a new CNI Server.
 // the path this the unix path to listen.
-func NewServer(unixSockPath string, bpfMountPath string, hardwareChecksum bool) Server {
+func NewServer(unixSockPath string, bpfMountPath string) Server {
 	if unixSockPath == "" {
 		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
@@ -52,9 +58,9 @@ func NewServer(unixSockPath string, bpfMountPath string, hardwareChecksum bool) 
 		bpfMountPath = "/sys/fs/bpf"
 	}
 	return &server{
-		unixSockPath:     unixSockPath,
-		bpfMountPath:     bpfMountPath,
-		hardwareCheckSum: hardwareChecksum,
+		unixSockPath: unixSockPath,
+		bpfMountPath: bpfMountPath,
+		qdiscs:       make(map[string]qdisc),
 	}
 }
 
@@ -87,12 +93,21 @@ func (s *server) Start() error {
 	}
 	go func() {
 		go ss.Serve(l) // nolint: errcheck
-		<-s.stop
+		// TODO: unify all clean-up functions
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGABRT)
+		select {
+		case <-ch:
+			s.Stop()
+		case <-s.stop:
+			s.Stop()
+		}
 		_ = ss.Shutdown(context.Background())
 	}()
 	return nil
 }
 
 func (s *server) Stop() {
+	s.cleanUpTC()
 	close(s.stop)
 }
