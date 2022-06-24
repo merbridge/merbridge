@@ -7,7 +7,7 @@ require (
 	github.com/containernetworking/plugins v1.1.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.7.3
 	k8s.io/api v0.23.6
 	k8s.io/client-go v0.23.6
 )
@@ -174,7 +174,7 @@ require (
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	istio.io/client-go v1.12.0-alpha.5.0.20220415150322-7090720d58d2 // indirect
 	istio.io/pkg v0.0.0-20220412163443-dc80e140671f // indirect
 	k8s.io/apiextensions-apiserver v0.23.5 // indirect
