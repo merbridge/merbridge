@@ -1,0 +1,155 @@
+---
+# Source: merbridge/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: merbridge
+  namespace: kuma-system
+  labels:
+    app: merbridge
+---
+# Source: merbridge/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: merbridge
+  labels:
+    app: merbridge
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - get
+  - watch
+---
+# Source: merbridge/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: merbridge
+  labels:
+    app: merbridge
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: merbridge
+subjects:
+- kind: ServiceAccount
+  name: merbridge
+  namespace: kuma-system
+---
+# Source: merbridge/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: merbridge
+  namespace: kuma-system
+  labels:
+    app: merbridge
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: merbridge
+  template:
+    metadata:
+      labels:
+        app: merbridge
+    spec:
+      hostNetwork: true
+      containers:
+      - image: "ghcr.io/merbridge/merbridge:latest"
+        imagePullPolicy: Always
+        name: merbridge
+        args:
+        - /app/mbctl
+        - -m
+        - kuma
+        - --ips-file
+        - /host/ips/ips.txt
+        - --use-reconnect=true
+        - --cni-mode=false
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - make
+              - -k
+              - clean
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 300m
+            memory: 200Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /sys/fs/cgroup
+            name: sys-fs-cgroup
+          - mountPath: /host/ips
+            name: host-ips
+          - mountPath: /host/opt/cni/bin
+            name: cni-bin-dir
+          - mountPath: /host/etc/cni/net.d
+            name: cni-config-dir
+          - mountPath: /host/proc
+            name: host-proc
+          - mountPath: /host/var/run
+            name: host-var-run
+            mountPropagation: Bidirectional
+      initContainers:
+      - image: "ghcr.io/merbridge/merbridge:latest"
+        imagePullPolicy: Always
+        name: init
+        args:
+        - sh
+        - -c
+        - nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee /host/ips/ips.txt
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+          limits:
+            cpu: 300m
+            memory: 50Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /host/ips
+            name: host-ips
+          - mountPath: /host/proc
+            name: host-proc
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: merbridge
+      serviceAccountName: merbridge
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /sys/fs/cgroup
+        name: sys-fs-cgroup
+      - hostPath:
+          path: /proc
+        name: host-proc
+      - emptyDir: {}
+        name: host-ips
+      - hostPath:
+          path: /opt/cni/bin
+        name: cni-bin-dir
+      - hostPath:
+          path: /etc/cni/net.d
+        name: cni-config-dir
+      - hostPath:
+          path: /var/run
+        name: host-var-run

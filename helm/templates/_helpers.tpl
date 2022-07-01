@@ -62,7 +62,7 @@ Merbridge args command
 - {{ .Values.mode }}
 - --ips-file
 - {{ .Values.ipsFilePath }}
-- --use-reconnect={{ if eq .Values.mode "istio" }}true{{ else }}false{{ end }}
+- --use-reconnect={{ if or (eq .Values.mode "istio") (eq .Values.mode "kuma") }}true{{ else }}false{{ end }}
 - --cni-mode={{ .Values.cniMode }}
 {{- if ne .Values.mountPath.proc "/host/proc" }}
 - --host-proc={{ .Values.mountPath.proc }}

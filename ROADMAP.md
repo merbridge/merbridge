@@ -3,6 +3,7 @@
 ## eBPF enhancement
 - [ ] Metrics
 - [X] Linkerd2 Supported
+- [X] Kuma Support
 - [ ] Cross-node mode(XDP?)
 - [ ] IPv6 Support
 - [X] DNS Redirect

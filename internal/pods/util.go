@@ -34,3 +34,12 @@ func IsLinkerdInjectedSidecar(pod *v1.Pod) bool {
 	}
 	return false
 }
+
+func IsKumaInjectedSidecar(pod *v1.Pod) bool {
+	for _, c := range pod.Spec.Containers {
+		if c.Name == "kuma-sidecar" && len(pod.Spec.Containers) != 1 {
+			return true
+		}
+	}
+	return false
+}

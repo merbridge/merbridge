@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Copyright © 2022 Merbridge Authors
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,18 +13,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#/bin/sh
 
 usage() {
-	echo "Usage: ./reload-prog.sh OPTIONS { [-n NODE] [-p EBPFPROG] | -h }
+	echo "Usage: ./reload-prog.sh OPTIONS { [-m MODE] [-n NODE] [-p EBPFPROG] | -h }
 		
 			OPTIONS := {-v}
 				-v : Enable verbose mode. It prints more information for debugging the failure of loading
-                
+
+			MODE := {istio | kuma}
 			NODE := {all | <node where ebpf programs needs reload>}
 			EBPFPROG := {all | bind | connect | sockops | getsock | redir | sendmsg | recvmsg | xdp}
-		
-			Description: This script is just a utility script to help developers to load locally hecked 
+
+			Description: This script is just a utility script to help developers to load locally hacked
 			eBPF programs in the existing Merbridge pods, so they don't have to redeploy the Merbridge 
 			daemonset or can skip the manual steps and save time. 
 			
@@ -39,6 +41,9 @@ usage() {
 	
 			Load bind eBPF program on all worker node
 			./reload-prog.sh -n all -p bind
+
+			Load bind eBPF program on all worker nodes for kuma service mesh
+			./reload-prog.sh -m kuma -n all -p bind
 	
 			Enable verbose mode of the script
 			./reload-prog.sh -v -n worker-3 -p xdp		"
@@ -49,7 +54,7 @@ if [ $# -lt 1 ] ; then
     usage
 fi
 
-unset workernode ebpfprog 
+unset mode workernode ebpfprog
 verbose=false
 
 set_variable()
@@ -64,11 +69,12 @@ set_variable()
   fi
 }
 
-while getopts "hvn:p:" opt; do
+while getopts "hvn:m:p:" opt; do
 	case ${opt} in
 		v ) verbose=true;;
 		n ) set_variable workernode $OPTARG;;
 		p ) set_variable ebpfprog $OPTARG;;
+		m ) set_variable mode $OPTARG;;
 		h ) usage;;
 		: ) echo "Please provide the required arguments"
 			usage;;
@@ -76,6 +82,15 @@ while getopts "hvn:p:" opt; do
 			usage;;
 	esac
 done
+
+if [ -z "$mode" ]; then
+  mode="istio"
+fi
+
+case $mode in
+  istio ) mesh_number=1; namespace="istio-system";;
+  kuma )  mesh_number=3; namespace="kuma-system";;
+esac
 
 if ! command -v kubectl &> /dev/null && command -v clang &> /dev/null && command -v bpftool &> /dev/null
 then
@@ -87,9 +102,9 @@ declare -a podlist
 
 get_pod_list() {
         if [ "$1" = "all" ] ;then
-                podlist=( `kubectl get pods -n istio-system -l app=merbridge | awk '{print $1}'` )
+                podlist=( `kubectl get pods -n "$namespace" -l app=merbridge | awk '{print $1}'` )
         else
-                podlist=( `kubectl get pods -n istio-system -o wide -l app=merbridge --field-selector spec.nodeName=$1 | awk '{print $1}'` )
+                podlist=( `kubectl get pods -n "$namespace" -o wide -l app=merbridge --field-selector spec.nodeName=$1 | awk '{print $1}'` )
         fi
 
 	podlist=("${podlist[@]:1}")
@@ -116,30 +131,30 @@ reload_prog() {
         pod=$1
 	prog=$2
 	if [ "$prog" = "getsock" ]; then
-		clang -O2 -g  -Wall -target bpf -I/usr/include/x86_64-linux-gnu  -DMESH=1 -DUSE_RECONNECT -c mb_get_sockopts.c -o mb_get_sockopts.o
-		kubectl cp ./mb_get_sockopts.o $pod:bpf/ -c merbridge -n istio-system
+		clang -O2 -g  -Wall -target bpf -I/usr/include/x86_64-linux-gnu -DMESH="$mesh_number" -DUSE_RECONNECT -c mb_get_sockopts.c -o mb_get_sockopts.o
+		kubectl cp ./mb_get_sockopts.o $pod:bpf/ -c merbridge -n "$namespace"
 	else
-		clang -O2 -g  -Wall -target bpf -I/usr/include/x86_64-linux-gnu  -DMESH=1 -DUSE_RECONNECT -c mb_$prog.c -o mb_$prog.o
-		kubectl cp ./mb_$prog.o $pod:bpf/ -c merbridge -n istio-system
+		clang -O2 -g  -Wall -target bpf -I/usr/include/x86_64-linux-gnu -DMESH="$mesh_number" -DUSE_RECONNECT -c mb_$prog.c -o mb_$prog.o
+		kubectl cp ./mb_$prog.o $pod:bpf/ -c merbridge -n "$namespace"
 	fi
 
-        kubectl exec -it $pod -c merbridge -n istio-system -- make -C bpf clean-$prog
-        kubectl exec -it $pod -c merbridge -n istio-system -- make -C bpf load-$prog
+        kubectl exec -it $pod -c merbridge -n "$namespace" -- make -C bpf clean-$prog
+        kubectl exec -it $pod -c merbridge -n "$namespace" -- make -C bpf load-$prog
 	if [ "$prog" != "xdp" ]; then
-        	kubectl exec -it $pod -c merbridge -n istio-system -- make -C bpf attach-$prog
+        	kubectl exec -it $pod -c merbridge -n "$namespace" -- make -C bpf attach-$prog
 	fi
 }
 
 show_bpfprog() {
 	echo "*** Merbridge loaded eBPF Programs on pod $1 ***"
         pod=$1
-        kubectl exec -it $pod -c merbridge -n istio-system -- /usr/local/sbin/bpftool prog show
+        kubectl exec -it $pod -c merbridge -n "$namespace" -- /usr/local/sbin/bpftool prog show
 }
 
 show_progobj() {
 	echo "*** Merbridge eBPF Object Files on pod $1***"
         pod=$1
-        kubectl exec -it $pod -c merbridge -n istio-system -- ls -lrt ./bpf
+        kubectl exec -it $pod -c merbridge -n "$namespace" -- ls -lrt ./bpf
 }
 
 get_pod_list $workernode

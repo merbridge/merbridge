@@ -27,7 +27,7 @@ spec:
             exec:
               command:
               {{- include "merbridge.cmd.clean" . | nindent 14 }}
-        resources: 
+        resources:
           requests:
             cpu: {{ .Values.resources.container.request.cpu }}
             memory: {{ .Values.resources.container.request.memory }}

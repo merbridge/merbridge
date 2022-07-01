@@ -13,6 +13,8 @@ ifeq ($(MESH_MODE),istio)
     MACROS:= $(MACROS) -DMESH=1
 else ifeq ($(MESH_MODE),linkerd)
     MACROS:= $(MACROS) -DMESH=2
+else ifeq ($(MESH_MODE),kuma)
+    MACROS:= $(MACROS) -DMESH=3
 else
 $(error MESH_MODE $(MESH_MODE) isn't supported)
 endif
