@@ -170,7 +170,17 @@ jobs:
                 image: "nginx:stable"
                 imagePullPolicy: IfNotPresent
                 ports:
-                - containerPort: 80' | kubectl apply -f -
+                - containerPort: 80
+                readinessProbe:
+                  httpGet:
+                    path: /
+                    port: 80
+                  initialDelaySeconds: 3
+                  periodSeconds: 3
+                livenessProbe:
+                  httpGet:
+                    path: /
+                    port: 80' | kubectl apply -f -
         
         # client
         
