@@ -224,12 +224,8 @@ jobs:
     - name: disable kuma-init containers using container-patch
       run: |
         kubectl patch deployment example-server --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container"}}}}}'
-        kubectl rollout status deployment example-server
         kubectl patch deployment example-client --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container"}}}}}'
-        kubectl rollout status deployment example-client
-        kubectl delete pod --all
-        kubectl rollout status deployment example-server
-        kubectl rollout status deployment example-client
+        kubectl delete pod --all --wait=true
     - name: install merbridge
       run: |
         nohup go run -exec sudo ./app/main.go -k -m kuma -d > mbctl.log &
