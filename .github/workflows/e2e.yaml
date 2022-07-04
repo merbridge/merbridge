@@ -154,6 +154,10 @@ jobs:
           labels:
             app: example-server
         spec:
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 0
           selector:
             matchLabels:
               service: example-server
@@ -190,6 +194,10 @@ jobs:
           labels:
             app: example-client
         spec:
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 0
           selector:
             matchLabels:
               service: example-client
