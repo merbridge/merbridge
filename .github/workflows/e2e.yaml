@@ -165,6 +165,7 @@ jobs:
                 app: example-app
                 service: example-server
             spec:
+              terminationGracePeriodSeconds: 0
               containers:
               - name: nginx
                 image: "nginx:stable"
@@ -202,6 +203,7 @@ jobs:
                 app: example-app
                 service: example-client
             spec:
+              terminationGracePeriodSeconds: 0
               containers:
               - name: curl
                 image: curlimages/curl
