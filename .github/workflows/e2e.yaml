@@ -145,7 +145,6 @@ jobs:
             name: http
             appProtocol: http
           selector:
-            app: example-app
             service: example-server
         ---
         apiVersion: apps/v1
@@ -157,12 +156,10 @@ jobs:
         spec:
           selector:
             matchLabels:
-              app: example-app
               service: example-server
           template:
             metadata:
               labels:
-                app: example-app
                 service: example-server
             spec:
               terminationGracePeriodSeconds: 0
@@ -195,12 +192,10 @@ jobs:
         spec:
           selector:
             matchLabels:
-              app: example-app
               service: example-client
           template:
             metadata:
               labels:
-                app: example-app
                 service: example-client
             spec:
               terminationGracePeriodSeconds: 0
