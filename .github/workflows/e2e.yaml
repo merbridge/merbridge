@@ -214,14 +214,12 @@ jobs:
         kubectl rollout status deployment example-client
     - name: test connect without Merbridge
       run: |
-        sleep 5
         service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
         kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v "$service_name".mesh
     - name: disable kuma-init containers using container-patch
       run: |
-        kubectl patch deployment example-server --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container"}}}}}'
+        kubectl patch deployment example-server --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container", "kuma.io/virtual-probes": "disabled"}}}}}'
         kubectl patch deployment example-client --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container"}}}}}'
-        # kubectl delete pod --all --wait=true
     - name: install merbridge
       run: |
         nohup go run -exec sudo ./app/main.go -k -m kuma -d > mbctl.log &
@@ -230,14 +228,7 @@ jobs:
       run: |
         set -e
         
-        kubectl get all -A
-        
-        echo "\n\n###\n\n"
-        
-        kubectl logs deploy/example-server
-        
         service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
-        echo "service name: $service_name"
         kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v "$service_name".mesh
         sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
         
