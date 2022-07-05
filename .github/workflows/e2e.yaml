@@ -152,12 +152,8 @@ jobs:
         metadata:
           name: example-server
           labels:
-            app: example-server
+            service: example-server
         spec:
-          strategy:
-            rollingUpdate:
-              maxSurge: 1
-              maxUnavailable: 0
           selector:
             matchLabels:
               service: example-server
@@ -192,7 +188,7 @@ jobs:
         metadata:
           name: example-client
           labels:
-            app: example-client
+            service: example-client
         spec:
           strategy:
             rollingUpdate:
@@ -220,7 +216,7 @@ jobs:
       run: |
         sleep 5
         service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
-        kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v --connect-timeout 5 --max-time 10 --retry 5 --retry-delay 0 --retry-max-time 40 "$service_name".mesh
+        kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v "$service_name".mesh
     - name: disable kuma-init containers using container-patch
       run: |
         kubectl patch deployment example-server --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container"}}}}}'
@@ -236,9 +232,9 @@ jobs:
         
         kubectl get all -A
         
-        sleep 15
+        echo "\n\n###\n\n"
         
-        kubectl get all -A
+        kubectl logs deploy/example-server
         
         service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
         echo "service name: $service_name"
