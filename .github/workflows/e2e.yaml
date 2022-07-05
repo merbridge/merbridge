@@ -234,6 +234,8 @@ jobs:
       run: |
         set -e
         
+        sleep 15
+        
         service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
         echo "service name: $service_name"
         kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v "$service_name".mesh
