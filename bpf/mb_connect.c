@@ -24,8 +24,8 @@ static __u32 outip = 1;
 static inline int udp4_connect(struct bpf_sock_addr *ctx)
 {
 
-#if MESH != ISTIO
-    // only works on istio
+#if MESH != ISTIO && MESH != KUMA
+    // only works on istio and kuma
     return 1;
 #endif
     if (!(is_port_listen_current_ns(ctx, 0, OUT_REDIRECT_PORT) &&
@@ -56,7 +56,7 @@ static inline int tcp4_connect(struct bpf_sock_addr *ctx)
     // todo(kebe7jun) more reliable way to verify,
     if (!is_port_listen_current_ns(ctx, 0, OUT_REDIRECT_PORT)) {
         // bypass normal traffic.
-        // we only deal pod's traffic managed by istio.
+        // we only deal pod's traffic managed by istio or kuma.
         return 1;
     }
     __u32 curr_pod_ip = 0;

@@ -75,3 +75,164 @@ jobs:
         [ "$(sudo cat /tmp/trace-log | grep 'bytes with eBPF successfully')" = "" ] && (echo eBPF redirect progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 12)
         [ "$(sudo cat /tmp/trace-log | grep 'successfully deal DNS redirect query')" = "" ] && (echo DNS Proxy not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 13)
         sudo rm -f /tmp/trace-log
+
+  # kuma
+
+  kuma-e2e:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'needs-e2e-test') }}
+    env:
+      KUMA_VERSION: '1.7.0'
+      KIND_VERSION: v0.11.1
+      KERNEL_VERSION: v5.4
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+    - name: install bpftool
+      run: |
+        sudo bash ./scripts/build-bpftool.sh
+    - name: setup kind cluster
+      run: |
+        ./scripts/setup-kind.sh
+    - name: try load and unload
+      run: |
+        uname -a
+        make load
+        make attach
+        make clean
+    - name: install kuma
+      run: |
+        ./scripts/install-kuma.sh
+    - name: annotate default namespace to automatically inject kuma to pods it contains
+      run: |
+        kubectl label ns default kuma.io/sidecar-injection=enabled
+    - name: deploy test server app
+      run: |
+        echo '---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: example-server
+        spec:
+          ports:
+          - port: 80
+            name: http
+            appProtocol: http
+          selector:
+            service: example-server
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: example-server
+          labels:
+            service: example-server
+        spec:
+          selector:
+            matchLabels:
+              service: example-server
+          template:
+            metadata:
+              labels:
+                service: example-server
+            spec:
+              terminationGracePeriodSeconds: 0
+              containers:
+              - name: nginx
+                image: "nginx:stable"
+                imagePullPolicy: IfNotPresent
+                ports:
+                - containerPort: 80
+                readinessProbe:
+                  httpGet:
+                    path: /
+                    port: 80
+                  initialDelaySeconds: 3
+                  periodSeconds: 3
+                livenessProbe:
+                  httpGet:
+                    path: /
+                    port: 80' | kubectl apply -f -
+        
+        # wait till our example deployment is ready
+        kubectl rollout status deployment example-server
+    - name: deploy test client app
+      run: |
+        echo '---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: example-client
+          labels:
+            service: example-client
+        spec:
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 0
+          selector:
+            matchLabels:
+              service: example-client
+          template:
+            metadata:
+              labels:
+                service: example-client
+            spec:
+              terminationGracePeriodSeconds: 0
+              containers:
+              - name: curl
+                image: curlimages/curl
+                command: ["/bin/sleep", "infinity"]
+                imagePullPolicy: IfNotPresent' | kubectl apply -f -
+        
+        # wait till our example deployment is ready
+        kubectl rollout status deployment example-client
+    - name: apply container patch which disables kuma-init container
+      run: |
+        # this step is just temporary, till kuma won't support disabling kuma-init
+        # containers as a part of configuration
+        
+        cat > /tmp/container-patch.yaml <<EOF
+        apiVersion: kuma.io/v1alpha1
+        kind: ContainerPatch
+        metadata:
+          name: disable-init-container
+          namespace: kuma-system
+        spec:
+          initPatch:
+          - op: replace
+            path: /command
+            value: '["echo"]'
+        EOF
+        
+        kubectl apply -f /tmp/container-patch.yaml
+        rm -f /tmp/container-patch.yaml
+    - name: test connect without Merbridge
+      run: |
+        service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
+        kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v "$service_name".mesh
+    - name: disable kuma-init containers using container-patch
+      run: |
+        kubectl patch deployment example-server --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container", "kuma.io/virtual-probes": "disabled"}}}}}'
+        kubectl patch deployment example-client --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container"}}}}}'
+    - name: install merbridge
+      run: |
+        nohup go run -exec sudo ./app/main.go -k -m kuma -d > mbctl.log &
+        while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
+    - name: test connect with Merbridge
+      run: |
+        set -e
+        
+        service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
+        kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v "$service_name".mesh
+        sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
+        
+        # check if eBPF works
+        [ "$(sudo cat /tmp/trace-log | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 11)
+        [ "$(sudo cat /tmp/trace-log | grep 'bytes with eBPF successfully')" = "" ] && (echo eBPF redirect progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 12)
+        [ "$(sudo cat /tmp/trace-log | grep 'successfully deal DNS redirect query')" = "" ] && (echo DNS Proxy not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 13)
+        sudo rm -f /tmp/trace-log

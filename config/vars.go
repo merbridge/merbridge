@@ -18,6 +18,7 @@ package config
 const (
 	ModeIstio   = "istio"
 	ModeLinkerd = "linkerd"
+	ModeKuma    = "kuma"
 	LocalPodIps = "/sys/fs/bpf/tc/globals/local_pod_ips"
 )
 

@@ -21,8 +21,8 @@ limitations under the License.
 
 __section("cgroup/recvmsg4") int mb_recvmsg4(struct bpf_sock_addr *ctx)
 {
-#if MESH != ISTIO
-    // only works on istio
+#if MESH != ISTIO && MESH != KUMA
+    // only works on istio and kuma
     return 1;
 #endif
     if (bpf_htons(ctx->user_port) != DNS_CAPTURE_PORT) {

@@ -43,6 +43,15 @@ The Merbridge [v0.4.0] has been installed in namespace [istio-system]. It will b
 helm install -n linkerd --set mode=linkerd merbridge helm
 ```
 
+### Install Merbridge on Kuma
+
++ set mode=kuma to switch to kuma mode
++ set namespace where merbridge is going to install by -n .
+
+``` bash
+helm install -n kuma-system --set mode=kuma merbridge helm
+```
+
 ### Uninstall
 
 + excute this command in the namespace where merbridge has been installed
@@ -65,6 +74,8 @@ make helm
 make helm-istio
 # update linkerd deploy yaml
 make helm-linkerd
+# update kuma deploy yaml
+make helm-kuma
 # package helm charts
 make helm-package
 ```
