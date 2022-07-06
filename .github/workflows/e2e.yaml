@@ -214,7 +214,7 @@ jobs:
     - name: test connect without Merbridge
       run: |
         service_name=$(kubectl get dataplane $(kubectl get po -l service=example-server -o=jsonpath='{..metadata.name}') -o=jsonpath='{..spec.networking.inbound[0].tags.kuma\.io/service}')
-        kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- bash -c "curl -s -v $service_name".mesh"
+        kubectl exec $(kubectl get po -l service=example-client -o=jsonpath='{..metadata.name}') -c curl -- curl -s -v $service_name".mesh
     - name: disable kuma-init containers using container-patch
       run: |
         kubectl patch deployment example-server --patch '{"spec": {"template": {"metadata": {"annotations": {"kuma.io/container-patches": "disable-init-container", "kuma.io/virtual-probes": "disabled"}}}}}'
