@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package config
 
 const (
@@ -29,7 +30,7 @@ var (
 	UseReconnect  = true
 	Debug         = false
 	EnableCNI     = false
-	IsKind        = false // is Run Kubernetes in Docker
+	IsKind        = false // is Kubernetes running in Docker
 	HostProc      string
 	CNIBinDir     string
 	CNIConfigDir  string

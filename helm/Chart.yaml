@@ -9,6 +9,7 @@ maintainers:
     url: https://github.com/merbridge/merbridge
 keywords:
 - istio
+- linkerd
 - kuma
 - ebpf
 sources:

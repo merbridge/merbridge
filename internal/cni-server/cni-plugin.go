@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cniserver
 
 import (
@@ -49,7 +50,7 @@ type qdisc struct {
 }
 
 func getMarkKeyOfNetns(netns string) uint32 {
-	// todo check confict?
+	// todo check conflict?
 	algorithm := fnv.New32a()
 	_, _ = algorithm.Write([]byte(netns))
 	return algorithm.Sum32()
@@ -118,7 +119,7 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 
 // listen on 39807
 func (s *server) buildListener(netns string) error {
-	addrs := []net.Addr{}
+	var addrs []net.Addr
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
 		if iface.Name == "lo" {
@@ -176,7 +177,7 @@ func (s *server) listenConfig(addr net.Addr, netns string) net.ListenConfig {
 					operr = err
 					return
 				}
-				var key uint32 = getMarkKeyOfNetns(netns)
+				key := getMarkKeyOfNetns(netns)
 				operr = m.Update(key, ip, ebpf.UpdateAny)
 				if operr != nil {
 					return
@@ -205,7 +206,7 @@ func (s *server) checkAndRepairPodPrograms() error {
 				continue
 			}
 			if skipListening(pid) {
-				// ignore uninjected pods
+				// ignore non-injected pods
 				log.Debugf("skip listening for pid(%s)", pid)
 				continue
 			}

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cniserver
 
 import (
@@ -43,7 +44,7 @@ type server struct {
 	unixSockPath string
 	bpfMountPath string
 	// qdiscs is for cleaning up all tc programs when merbridge exits
-	// key: netns, value: qidsc info
+	// key: netns, value: qdisc info
 	qdiscs map[string]qdisc
 	stop   chan struct{}
 }

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package linux
 
 import (
@@ -49,11 +50,9 @@ func IsCurrentNodeIP(ipstr string, ipListFile string) bool {
 		}
 	}
 	log.Debugf("no ips file found, fetch ips from interfaces")
-	ifaces, _ := net.Interfaces()
-	// handle err
+	ifaces, _ := net.Interfaces() // todo: handle err
 	for _, i := range ifaces {
-		addrs, _ := i.Addrs()
-		// handle err
+		addrs, _ := i.Addrs() // todo: handle err
 		for _, addr := range addrs {
 			switch v := addr.(type) {
 			case *net.IPNet:
@@ -65,7 +64,7 @@ func IsCurrentNodeIP(ipstr string, ipListFile string) bool {
 					return true
 				}
 			}
-			// process IP address
+			// todo: process IP address
 		}
 	}
 	return false
