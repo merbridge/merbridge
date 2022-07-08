@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package localip
 
 import (
@@ -71,13 +72,13 @@ func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}) e
 }
 
 func createLocalIPController(client kubernetes.Interface) pods.Watcher {
-	locaName, err := os.Hostname()
+	localName, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
 	return pods.Watcher{
 		Client:          client,
-		CurrentNodeName: locaName,
+		CurrentNodeName: localName,
 		OnAddFunc:       addFunc,
 		OnUpdateFunc:    updateFunc,
 		OnDeleteFunc:    deleteFunc,

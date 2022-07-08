@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cniplugin
 
 import (
@@ -166,7 +167,7 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 	return types.PrintResult(result, conf.CNIVersion)
 }
 
-func CmdCheck(args *skel.CmdArgs) (err error) {
+func CmdCheck(*skel.CmdArgs) (err error) {
 	return err
 }
 

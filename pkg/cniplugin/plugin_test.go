@@ -34,7 +34,7 @@ func TestIgnorePod(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "uninjected pod",
+			name: "non-injected pod",
 			args: args{
 				pod: &plugin.PodInfo{
 					Containers: []string{"foo", "bar"},
