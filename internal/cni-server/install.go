@@ -143,7 +143,7 @@ func (in *Installer) Cleanup() error {
 		if err != nil {
 			return err
 		}
-		if err = file.AtomicWrite(in.cniConfigFilepath, cniConfig, os.FileMode(0644)); err != nil {
+		if err = file.AtomicWrite(in.cniConfigFilepath, cniConfig, os.FileMode(0o644)); err != nil {
 			return err
 		}
 	}
@@ -245,7 +245,7 @@ func writeCNIConfig(ctx context.Context, mbCNIConfig []byte) (string, error) {
 		return "", err
 	}
 
-	if err = file.AtomicWrite(cniConfigFilepath, cniConfig, os.FileMode(0644)); err != nil {
+	if err = file.AtomicWrite(cniConfigFilepath, cniConfig, os.FileMode(0o644)); err != nil {
 		return "", err
 	}
 
@@ -446,7 +446,7 @@ func createKubeconfigFile(saToken string) (kubeconfigFilepath string, err error)
 
 	kubeconfigFilepath = filepath.Join(config.CNIConfigDir, kubeConfigFileName)
 	log.Infof("write kubeconfig file %s with: \n%+v", kubeconfigFilepath, kcbbToPrint.String())
-	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), os.FileMode(0600)); err != nil {
+	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), os.FileMode(0o600)); err != nil {
 		return "", err
 	}
 
