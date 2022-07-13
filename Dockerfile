@@ -27,6 +27,7 @@ ADD . .
 
 RUN go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
 RUN go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
+RUN go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
 
 FROM ubuntu:20.04
 
@@ -38,5 +39,6 @@ COPY bpf bpf
 COPY Makefile Makefile
 COPY --from=mbctl /app/dist/mbctl mbctl
 COPY --from=mbctl /app/dist/merbridge-cni merbridge-cni
+COPY --from=mbctl /app/dist/merbridge-fd-back merbridge-fd-back
 
 CMD /app/mbctl

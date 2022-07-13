@@ -41,6 +41,7 @@ import (
 	"istio.io/istio/cni/pkg/plugin"
 
 	"github.com/merbridge/merbridge/config"
+	"github.com/merbridge/merbridge/pkg/file"
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
@@ -80,6 +81,7 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 		log.Errorf("get ns %s error", args.Netns)
 		return err
 	}
+
 	err = netns.Do(func(_ ns.NetNS) error {
 		// listen on 39807
 		if err := s.buildListener(netns.Path()); err != nil {
@@ -108,6 +110,15 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 	}
 	s.Lock()
 	delete(s.qdiscs, "/host"+args.Netns)
+	_netns, err := ns.GetNS("/host" + args.Netns)
+	if err != nil {
+		log.Errorf("get netns %s error", err)
+	}
+	delete(s.listeners, _netns.Path())
+	err = file.OptInodeByNetns("del", _netns.Path(), "")
+	if err != nil {
+		log.Errorf("delete netns inode record %s error", err)
+	}
 	s.Unlock()
 	m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
 	if err != nil {
@@ -141,8 +152,47 @@ func (s *server) buildListener(netns string) error {
 	lc := s.listenConfig(addrs[0], netns)
 	l, err := lc.Listen(context.Background(), "tcp", "0.0.0.0:39807")
 	if err != nil {
+		if errors.Is(err, syscall.EADDRINUSE) {
+			inode, err := file.GetInodeBynetns(netns)
+			if err != nil {
+				log.Errorf("get inode err: %v", err)
+			}
+			for _, backL := range s.backListeners {
+				backTCPL := backL.(*net.TCPListener)
+				f, err := backTCPL.File()
+				if err != nil {
+					log.Errorf("parse back listen err: %v", err)
+					continue
+				}
+				_inode, err := getInoFromFd(f)
+				if err != nil {
+					log.Errorf("get inode err: %v", err)
+					continue
+				}
+				if inode == _inode {
+					if s.listeners == nil {
+						s.listeners = make(map[string]ListenerData)
+					}
+					s.listeners[netns] = ListenerData{l: backTCPL, netns: netns}
+				}
+			}
+		}
 		return err
 	}
+	f, err := l.(*net.TCPListener).File()
+	if err != nil {
+		log.Errorf("get file from listen fd err:%v", err)
+	}
+	inode, err := getInoFromFd(f)
+	if err != nil {
+		log.Errorf("get inode err:%v", err)
+	}
+
+	err = file.OptInodeByNetns("add", netns, inode)
+	if err != nil {
+		log.Errorf("record netns inode err:%v", err)
+	}
+
 	go func() {
 		// keep listener
 		for {
@@ -153,6 +203,7 @@ func (s *server) buildListener(netns string) error {
 			}
 		}
 	}()
+
 	return nil
 }
 

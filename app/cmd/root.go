@@ -41,22 +41,25 @@ var rootCmd = &cobra.Command{
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		stop := make(chan struct{}, 1)
 		if err := ebpfs.LoadMBProgs(config.Mode, config.UseReconnect, config.Debug); err != nil {
 			return fmt.Errorf("failed to load ebpf programs: %v", err)
 		}
 
 		cniReady := make(chan struct{}, 1)
 		if config.EnableCNI {
-			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
+			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf", stop)
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
 			}
 			installCNI(cmd.Context(), cniReady)
+		} else {
+			stop <- struct{}{}
 		}
 
 		// todo: wait for stop
-		if err := controller.Run(cniReady); err != nil {
+		if err := controller.Run(cniReady, stop); err != nil {
 			log.Fatal(err)
 			return err
 		}

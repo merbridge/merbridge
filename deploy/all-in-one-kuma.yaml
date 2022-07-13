@@ -153,3 +153,61 @@ spec:
       - hostPath:
           path: /var/run
         name: host-var-run
+
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: "merbridge-fd-back"
+  namespace: kuma-system
+  labels:
+    app: merbridge-fd-back
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: merbridge-fd-back
+  template:
+    metadata:
+      labels:
+        app: merbridge-fd-back
+    spec:
+      hostNetwork: true
+      containers:
+      - image: "ghcr.io/merbridge/merbridge:latest"
+        imagePullPolicy: Always
+        name: "merbridge-fd-back"
+        command: ["/app/merbridge-fd-back"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 300m
+            memory: 200Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /tmp
+            name: tmp-dir
+          - mountPath: /host/var/run
+            name: host-var-run
+            mountPropagation: Bidirectional
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: merbridge
+      serviceAccountName: merbridge
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /tmp
+        name: tmp-dir
+      - hostPath:
+          path: /var/run
+        name: host-var-run

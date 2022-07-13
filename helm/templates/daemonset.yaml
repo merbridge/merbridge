@@ -99,3 +99,61 @@ spec:
       - hostPath:
           path: /var/run
         name: host-var-run
+
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: "{{ .Values.fullname }}-fd-back"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "merbridge-fd-back.labels" . | nindent 4 }}
+spec:
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "merbridge-fd-back.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "merbridge-fd-back.labels" . | nindent 8 }}
+    spec:
+      hostNetwork: true
+      containers:
+      - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: "{{ .Values.fullname }}-fd-back"
+        command: ["/app/merbridge-fd-back"]
+        resources:
+          requests:
+            cpu: {{ .Values.resources.container.request.cpu }}
+            memory: {{ .Values.resources.container.request.memory }}
+          limits:
+            cpu: {{ .Values.resources.container.limit.cpu }}
+            memory: {{ .Values.resources.container.limit.memory }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /tmp
+            name: tmp-dir
+          - mountPath: {{ .Values.mountPath.varRun }}
+            name: host-var-run
+            mountPropagation: Bidirectional
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      nodeSelector:
+        {{- include "merbridge.nodeSelector" . | nindent 8 }}
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: {{ .Values.fullname }}
+      serviceAccountName: {{ .Values.fullname }}
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /tmp
+        name: tmp-dir
+      - hostPath:
+          path: /var/run
+        name: host-var-run

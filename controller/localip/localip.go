@@ -20,10 +20,8 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -37,7 +35,7 @@ import (
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}) error {
+func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}, stop chan struct{}) error {
 	var err error
 
 	if err = ebpfs.InitLoadPinnedMap(); err != nil {
@@ -58,10 +56,7 @@ func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}) e
 	if err = ebpfs.AttachMBProgs(); err != nil {
 		return fmt.Errorf("failed to attach ebpf programs: %v", err)
 	}
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-	<-ch
+	<-stop
 	w.Shutdown()
 
 	if err = ebpfs.UnLoadMBProgs(); err != nil {
