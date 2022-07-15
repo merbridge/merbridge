@@ -39,8 +39,6 @@ spec:
         volumeMounts:
           - mountPath: /sys/fs/cgroup
             name: sys-fs-cgroup
-          - mountPath: /host/ips
-            name: host-ips
           - mountPath: {{ .Values.mountPath.cniBin }}
             name: cni-bin-dir
           - mountPath: {{ .Values.mountPath.cniConfig }}
@@ -50,26 +48,6 @@ spec:
           - mountPath: {{ .Values.mountPath.varRun }}
             name: host-var-run
             mountPropagation: Bidirectional
-      initContainers:
-      - image: "{{ .Values.image.hub }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: init
-        args:
-        {{- include "merbridge.cmd.init.args" . | nindent 8 }}
-        resources:
-          requests:
-            cpu: {{ .Values.resources.init.request.cpu }}
-            memory: {{ .Values.resources.init.request.memory }}
-          limits:
-            cpu: {{ .Values.resources.init.limit.cpu }}
-            memory: {{ .Values.resources.init.limit.memory }}
-        securityContext:
-          privileged: true
-        volumeMounts:
-          - mountPath: /host/ips
-            name: host-ips
-          - mountPath: {{ .Values.mountPath.proc }}
-            name: host-proc
       dnsPolicy: {{ .Values.dnsPolicy }}
       nodeSelector:
         {{- include "merbridge.nodeSelector" . | nindent 8 }}
@@ -88,8 +66,6 @@ spec:
       - hostPath:
           path: /proc
         name: host-proc
-      - emptyDir: {}
-        name: host-ips
       - hostPath:
           path: /opt/cni/bin
         name: cni-bin-dir
