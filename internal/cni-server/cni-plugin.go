@@ -45,6 +45,7 @@ import (
 )
 
 type qdisc struct {
+	netns     string
 	device    string
 	hasClsact bool
 }
@@ -106,8 +107,14 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
+	netns := "/host" + args.Netns
+	inode, err := linux.GetFileInode(netns)
+	if err != nil {
+		return err
+	}
 	s.Lock()
-	delete(s.qdiscs, "/host"+args.Netns)
+	delete(s.qdiscs, inode)
+	delete(s.listeners, inode)
 	s.Unlock()
 	m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
 	if err != nil {
@@ -119,6 +126,10 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 
 // listen on 39807
 func (s *server) buildListener(netns string) error {
+	inode, err := linux.GetFileInode(netns)
+	if err != nil {
+		return err
+	}
 	var addrs []net.Addr
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
@@ -143,16 +154,10 @@ func (s *server) buildListener(netns string) error {
 	if err != nil {
 		return err
 	}
-	go func() {
-		// keep listener
-		for {
-			_, err := l.Accept()
-			if err != nil {
-				// only break loop if error.
-				break
-			}
-		}
-	}()
+	s.Lock()
+	// keep the listener, otherwise it will be GCed
+	s.listeners[inode] = l
+	s.Unlock()
 	return nil
 }
 
@@ -199,15 +204,15 @@ func (s *server) checkAndRepairPodPrograms() error {
 	for _, f := range hostProc {
 		if _, err = strconv.Atoi(f.Name()); err == nil {
 			pid := f.Name()
+			if skipListening(pid) {
+				// ignore non-injected pods
+				log.Debugf("skip listening for pid(%s)", pid)
+				continue
+			}
 			np := fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid)
 			netns, err := ns.GetNS(np)
 			if err != nil {
 				log.Errorf("Failed to get ns for %s, error: %v", np, err)
-				continue
-			}
-			if skipListening(pid) {
-				// ignore non-injected pods
-				log.Debugf("skip listening for pid(%s)", pid)
 				continue
 			}
 			if err = netns.Do(func(_ ns.NetNS) error {
@@ -261,8 +266,12 @@ func skipListening(pid string) bool {
 }
 
 func (s *server) attachTC(netns, dev string) error {
+	inode, err := linux.GetFileInode(netns)
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("tc qdisc add dev %s clsact", dev))
-	err := cmd.Run()
+	err = cmd.Run()
 	hasCls := false
 	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
 		log.Errorf("Add clsact to %s failed: unexpected exit code: %d, err: %v", dev, code, err)
@@ -282,8 +291,10 @@ func (s *server) attachTC(netns, dev string) error {
 	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
 		return fmt.Errorf("failed to attach tc(egress) to %s, unexpected exit code: %d, err: %v", dev, code, err)
 	}
+
 	s.Lock()
-	s.qdiscs[netns] = qdisc{
+	s.qdiscs[inode] = qdisc{
+		netns:     netns,
 		device:    dev,
 		hasClsact: hasCls,
 	}
@@ -294,10 +305,10 @@ func (s *server) attachTC(netns, dev string) error {
 func (s *server) cleanUpTC() {
 	s.Lock()
 	defer s.Unlock()
-	for nn, q := range s.qdiscs {
-		netns, err := ns.GetNS(nn)
+	for _, q := range s.qdiscs {
+		netns, err := ns.GetNS(q.netns)
 		if err != nil {
-			log.Errorf("Failed to get ns for %s, error: %v", nn, err)
+			log.Errorf("Failed to get ns for %s, error: %v", q.netns, err)
 			continue
 		}
 		if err = netns.Do(func(_ ns.NetNS) error {
@@ -321,7 +332,7 @@ func (s *server) cleanUpTC() {
 			}
 			return nil
 		}); err != nil {
-			log.Errorf("Failed to clean up tc for %s, error: %v", nn, err)
+			log.Errorf("Failed to clean up tc for %s, error: %v", q.netns, err)
 		}
 	}
 }

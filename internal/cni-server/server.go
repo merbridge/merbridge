@@ -44,9 +44,12 @@ type server struct {
 	unixSockPath string
 	bpfMountPath string
 	// qdiscs is for cleaning up all tc programs when merbridge exits
-	// key: netns, value: qdisc info
-	qdiscs map[string]qdisc
-	stop   chan struct{}
+	// key: netns(inode), value: qdisc info
+	qdiscs map[uint64]qdisc
+	// listeners are the dummy sockets created for eBPF programs to fetch the current pod ip
+	// key: netns(inode), value: net.Listener
+	listeners map[uint64]net.Listener
+	stop      chan struct{}
 }
 
 // NewServer returns a new CNI Server.
@@ -61,7 +64,8 @@ func NewServer(unixSockPath string, bpfMountPath string) Server {
 	return &server{
 		unixSockPath: unixSockPath,
 		bpfMountPath: bpfMountPath,
-		qdiscs:       make(map[string]qdisc),
+		qdiscs:       make(map[uint64]qdisc),
+		listeners:    make(map[uint64]net.Listener),
 	}
 }
 
