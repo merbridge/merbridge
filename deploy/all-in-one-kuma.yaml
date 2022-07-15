@@ -68,8 +68,6 @@ spec:
         - /app/mbctl
         - -m
         - kuma
-        - --ips-file
-        - /host/ips/ips.txt
         - --use-reconnect=true
         - --cni-mode=false
         lifecycle:

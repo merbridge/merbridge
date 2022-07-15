@@ -60,8 +60,6 @@ Merbridge args command
 - /app/mbctl
 - -m
 - {{ .Values.mode }}
-- --ips-file
-- {{ .Values.ipsFilePath }}
 - --use-reconnect={{ if or (eq .Values.mode "istio") (eq .Values.mode "kuma") }}true{{ else }}false{{ end }}
 - --cni-mode={{ .Values.cniMode }}
 {{- if ne .Values.mountPath.proc "/host/proc" }}
@@ -76,15 +74,6 @@ Merbridge args command
 {{- if ne .Values.mountPath.varRun "/host/var/run" }}
 - --host-var-run={{ .Values.mountPath.varRun }}
 {{- end }}
-{{- end }}
-
-{{/*
-Merbridge init args command
-*/}}
-{{- define "merbridge.cmd.init.args" -}}
-- sh
-- -c
-- nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee {{ .Values.ipsFilePath }}
 {{- end }}
 
 {{/*

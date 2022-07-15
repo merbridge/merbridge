@@ -68,8 +68,6 @@ spec:
         - /app/mbctl
         - -m
         - linkerd
-        - --ips-file
-        - /host/ips/ips.txt
         - --use-reconnect=false
         - --cni-mode=false
         lifecycle:
