@@ -19,10 +19,13 @@ package pods
 import (
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	kubeinformer "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
-	"k8s.io/client-go/kubernetes"
+	"github.com/merbridge/merbridge/config"
 )
 
 type WatcherAction interface {
@@ -40,7 +43,17 @@ type Watcher struct {
 }
 
 func (w *Watcher) Start() error {
-	kubeInformerFactory := kubeinformer.NewSharedInformerFactory(w.Client, 30*time.Second)
+	selectByNode := ""
+	if !config.IsKind {
+		selectByNode = fields.OneTermEqualSelector("spec.nodeName", w.CurrentNodeName).String()
+	}
+	kubeInformerFactory := kubeinformer.NewFilteredSharedInformerFactory(
+		w.Client, 30*time.Second, metav1.NamespaceAll,
+		func(o *metav1.ListOptions) {
+			o.FieldSelector = selectByNode
+		},
+	)
+
 	kubeInformerFactory.Core().V1().Pods().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    w.OnAddFunc,
 		UpdateFunc: w.OnUpdateFunc,

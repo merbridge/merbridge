@@ -119,25 +119,18 @@ func addFunc(obj interface{}) {
 		return
 	}
 	log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
-	podHostIP := pod.Status.HostIP
-	if config.CurrentNodeIP == "" {
-		if linux.IsCurrentNodeIP(podHostIP, config.IpsFile) {
-			config.CurrentNodeIP = podHostIP
-		}
+
+	_ip, _ := linux.IP2Linux(pod.Status.PodIP)
+	log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
+	p := podConfig{}
+	if config.Mode == config.ModeKuma {
+		parsePodConfigFromAnnotationsKuma(pod.Annotations, &p)
+	} else {
+		parsePodConfigFromAnnotations(pod.Annotations, &p)
 	}
-	if podHostIP == config.CurrentNodeIP || config.IsKind {
-		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-		log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
-		p := podConfig{}
-		if config.Mode == config.ModeKuma {
-			parsePodConfigFromAnnotationsKuma(pod.Annotations, &p)
-		} else {
-			parsePodConfigFromAnnotations(pod.Annotations, &p)
-		}
-		err := ebpfs.GetPinnedMap().Update(_ip, &p, ebpf.UpdateAny)
-		if err != nil {
-			log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
-		}
+	err := ebpfs.GetPinnedMap().Update(_ip, &p, ebpf.UpdateAny)
+	if err != nil {
+		log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
 	}
 }
 

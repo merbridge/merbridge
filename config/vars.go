@@ -24,15 +24,14 @@ const (
 )
 
 var (
-	CurrentNodeIP string
-	Mode          string
-	IpsFile       string
-	UseReconnect  = true
-	Debug         = false
-	EnableCNI     = false
-	IsKind        = false // is Kubernetes running in Docker
-	HostProc      string
-	CNIBinDir     string
-	CNIConfigDir  string
-	HostVarRun    string
+	Mode         string
+	IpsFile      string // not used
+	UseReconnect = true
+	Debug        = false
+	EnableCNI    = false
+	IsKind       = false // is Kubernetes running in Docker
+	HostProc     string
+	CNIBinDir    string
+	CNIConfigDir string
+	HostVarRun   string
 )
