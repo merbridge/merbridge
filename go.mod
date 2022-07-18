@@ -3,7 +3,7 @@ module github.com/merbridge/merbridge
 go 1.17
 
 require (
-	github.com/cilium/ebpf v0.8.1
+	github.com/cilium/ebpf v0.9.0
 	github.com/containernetworking/plugins v1.1.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
