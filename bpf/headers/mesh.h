@@ -18,6 +18,7 @@ limitations under the License.
 
 #define ISTIO 1
 #define LINKERD 2
+#define KUMA 3
 
 #ifndef MESH
 #define MESH 1
@@ -57,6 +58,24 @@ limitations under the License.
 
 #ifndef DNS_CAPTURE_PORT
 #define DNS_CAPTURE_PORT 0 // todo fix me
+#endif
+
+#elif MESH == KUMA
+
+#ifndef OUT_REDIRECT_PORT
+#define OUT_REDIRECT_PORT 15001
+#endif
+
+#ifndef IN_REDIRECT_PORT
+#define IN_REDIRECT_PORT 15006
+#endif
+
+#ifndef SIDECAR_USER_ID
+#define SIDECAR_USER_ID 5678
+#endif
+
+#ifndef DNS_CAPTURE_PORT
+#define DNS_CAPTURE_PORT 15053
 #endif
 
 #else

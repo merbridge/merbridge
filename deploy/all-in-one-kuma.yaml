@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: merbridge
-  namespace: istio-system
+  namespace: kuma-system
   labels:
     app: merbridge
 ---
@@ -39,14 +39,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: merbridge
-  namespace: istio-system
+  namespace: kuma-system
 ---
 # Source: merbridge/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: merbridge
-  namespace: istio-system
+  namespace: kuma-system
   labels:
     app: merbridge
 spec:
@@ -67,7 +67,7 @@ spec:
         args:
         - /app/mbctl
         - -m
-        - istio
+        - kuma
         - --use-reconnect=true
         - --cni-mode=false
         lifecycle:

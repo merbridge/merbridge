@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package localip
 
 import (
@@ -71,13 +72,13 @@ func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}) e
 }
 
 func createLocalIPController(client kubernetes.Interface) pods.Watcher {
-	locaName, err := os.Hostname()
+	localName, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
 	return pods.Watcher{
 		Client:          client,
-		CurrentNodeName: locaName,
+		CurrentNodeName: localName,
 		OnAddFunc:       addFunc,
 		OnUpdateFunc:    updateFunc,
 		OnDeleteFunc:    deleteFunc,
@@ -114,22 +115,22 @@ func addFunc(obj interface{}) {
 	if config.Mode == config.ModeLinkerd && !pods.IsLinkerdInjectedSidecar(pod) {
 		return
 	}
-	log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
-	podHostIP := pod.Status.HostIP
-	if config.CurrentNodeIP == "" {
-		if linux.IsCurrentNodeIP(podHostIP, config.IpsFile) {
-			config.CurrentNodeIP = podHostIP
-		}
+	if config.Mode == config.ModeKuma && !pods.IsKumaInjectedSidecar(pod) {
+		return
 	}
-	if podHostIP == config.CurrentNodeIP || config.IsKind {
-		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-		log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
-		p := podConfig{}
+	log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
+
+	_ip, _ := linux.IP2Linux(pod.Status.PodIP)
+	log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
+	p := podConfig{}
+	if config.Mode == config.ModeKuma {
+		parsePodConfigFromAnnotationsKuma(pod.Annotations, &p)
+	} else {
 		parsePodConfigFromAnnotations(pod.Annotations, &p)
-		err := ebpfs.GetPinnedMap().Update(_ip, &p, ebpf.UpdateAny)
-		if err != nil {
-			log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
-		}
+	}
+	err := ebpfs.GetPinnedMap().Update(_ip, &p, ebpf.UpdateAny)
+	if err != nil {
+		log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
 	}
 }
 
@@ -251,6 +252,32 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 					break
 				}
 				pod.includeOutRanges[i] = p
+			}
+		}
+	}
+}
+
+func parsePodConfigFromAnnotationsKuma(annotations map[string]string, pod *podConfig) {
+	excludeInboundPorts := []uint16{9901, 15001, 15006, 15010} // todo changeme
+	if v, ok := annotations["traffic.kuma.io/exclude-inbound-ports"]; ok {
+		excludeInboundPorts = append(excludeInboundPorts, getPortsFromString(v)...)
+	}
+	if len(excludeInboundPorts) > 0 {
+		for i, p := range excludeInboundPorts {
+			if i >= MaxItemLen {
+				break
+			}
+			pod.excludeInPorts[i] = p
+		}
+	}
+	if v, ok := annotations["traffic.kuma.io/exclude-outbound-ports"]; ok {
+		excludeOutboundPorts := getPortsFromString(v)
+		if len(excludeOutboundPorts) > 0 {
+			for i, p := range excludeOutboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.excludeOutPorts[i] = p
 			}
 		}
 	}

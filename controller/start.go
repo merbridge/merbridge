@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package controller
 
 import (
@@ -21,7 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/merbridge/merbridge/app/cmd/options"
-	localip "github.com/merbridge/merbridge/controller/localip"
+	"github.com/merbridge/merbridge/controller/localip"
 	"github.com/merbridge/merbridge/pkg/kube"
 )
 
@@ -43,7 +44,7 @@ func Run(cniReady chan struct{}) error {
 		return fmt.Errorf("create client error: %v", err)
 	}
 
-	// Run local ip controller
+	// run local ip controller
 	if err = localip.RunLocalIPController(client, cniReady); err != nil {
 		return fmt.Errorf("run local ip controller error: %v", err)
 	}

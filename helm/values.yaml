@@ -6,7 +6,6 @@
 fullname: merbridge
 namespace: istio-system
 mode: istio
-ipsFilePath: /host/ips/ips.txt
 cniMode: false
 
 # some settings of deployment
@@ -24,13 +23,6 @@ resources:
     request:
       cpu: 100m
       memory: 200Mi
-  init:
-    limit:
-      cpu: 300m
-      memory: 50Mi
-    request:
-      cpu: 100m
-      memory: 50Mi
 mountPath:
   proc: /host/proc
   cniBin: /host/opt/cni/bin

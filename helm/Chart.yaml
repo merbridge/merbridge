@@ -2,13 +2,15 @@ apiVersion: v2
 name: merbridge
 description: Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.
 type: application
-version: v0.4.0
-appVersion: v0.4.0
+version: v0.5.0
+appVersion: v0.5.0
 maintainers:
   - name: Merbridge Maintainers
     url: https://github.com/merbridge/merbridge
 keywords:
 - istio
+- linkerd
+- kuma
 - ebpf
 sources:
   - https://github.com/merbridge/merbridge

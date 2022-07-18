@@ -68,8 +68,6 @@ spec:
         - /app/mbctl
         - -m
         - linkerd
-        - --ips-file
-        - /host/ips/ips.txt
         - --use-reconnect=false
         - --cni-mode=false
         lifecycle:
@@ -79,7 +77,7 @@ spec:
               - make
               - -k
               - clean
-        resources: 
+        resources:
           requests:
             cpu: 100m
             memory: 200Mi
@@ -91,8 +89,6 @@ spec:
         volumeMounts:
           - mountPath: /sys/fs/cgroup
             name: sys-fs-cgroup
-          - mountPath: /host/ips
-            name: host-ips
           - mountPath: /host/opt/cni/bin
             name: cni-bin-dir
           - mountPath: /host/etc/cni/net.d
@@ -102,28 +98,6 @@ spec:
           - mountPath: /host/var/run
             name: host-var-run
             mountPropagation: Bidirectional
-      initContainers:
-      - image: "ghcr.io/merbridge/merbridge:latest"
-        imagePullPolicy: Always
-        name: init
-        args:
-        - sh
-        - -c
-        - nsenter --net=/host/proc/1/ns/net ip -o addr | awk '{print $4}' | tee /host/ips/ips.txt
-        resources:
-          requests:
-            cpu: 100m
-            memory: 50Mi
-          limits:
-            cpu: 300m
-            memory: 50Mi
-        securityContext:
-          privileged: true
-        volumeMounts:
-          - mountPath: /host/ips
-            name: host-ips
-          - mountPath: /host/proc
-            name: host-proc
       dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
@@ -142,8 +116,6 @@ spec:
       - hostPath:
           path: /proc
         name: host-proc
-      - emptyDir: {}
-        name: host-ips
       - hostPath:
           path: /opt/cni/bin
         name: cni-bin-dir

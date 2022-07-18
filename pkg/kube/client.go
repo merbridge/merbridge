@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package kube
 
 import (
@@ -34,7 +35,7 @@ func GetK8sConfigConfigWithFile(kubeconfig, context string) *rest.Config {
 	if kubeconfig != "" {
 		info, err := os.Stat(kubeconfig)
 		if err != nil || info.Size() == 0 {
-			// If the specified kubeconfig doesn't exists / empty file / any other error
+			// If the specified kubeconfig doesn't exist / empty file / any other error
 			// from file stat, fall back to default
 			kubeconfig = ""
 		}

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cniplugin
 
 import (
@@ -137,24 +138,21 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 		return err
 	}
 
-	if ignore(conf, &k8sArgs) {
-		// ignore uninjected pods
-		return nil
-	}
-
-	httpc := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", "/var/run/merbridge-cni.sock")
+	if !ignore(conf, &k8sArgs) {
+		httpc := http.Client{
+			Transport: &http.Transport{
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					return net.Dial("unix", "/var/run/merbridge-cni.sock")
+				},
 			},
-		},
-	}
-	http.DefaultClient = &httpc
-	bs, _ := json.Marshal(args)
-	body := bytes.NewReader(bs)
-	_, err = http.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
-	if err != nil {
-		return err
+		}
+		http.DefaultClient = &httpc
+		bs, _ := json.Marshal(args)
+		body := bytes.NewReader(bs)
+		_, err = http.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
+		if err != nil {
+			return err
+		}
 	}
 
 	var result *cniv1.Result
@@ -169,7 +167,7 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 	return types.PrintResult(result, conf.CNIVersion)
 }
 
-func CmdCheck(args *skel.CmdArgs) (err error) {
+func CmdCheck(*skel.CmdArgs) (err error) {
 	return err
 }
 

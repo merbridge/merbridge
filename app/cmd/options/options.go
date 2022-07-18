@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package options
 
 import (
@@ -28,8 +29,10 @@ func NewOptions() error {
 	if config.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
-	if config.Mode != config.ModeIstio && config.Mode != config.ModeLinkerd {
-		return fmt.Errorf("invalid mode %q, current only support istio and linkerd", config.Mode)
+	switch config.Mode {
+	case config.ModeIstio, config.ModeLinkerd, config.ModeKuma:
+		return nil
+	default:
+		return fmt.Errorf("invalid mode %q, current only support istio, linkerd and kuma", config.Mode)
 	}
-	return nil
 }

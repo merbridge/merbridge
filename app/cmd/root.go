@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cmd
 
 import (
@@ -46,7 +47,7 @@ var rootCmd = &cobra.Command{
 
 		cniReady := make(chan struct{}, 1)
 		if config.EnableCNI {
-			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf", config.HardwareCheckSum)
+			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
@@ -54,7 +55,7 @@ var rootCmd = &cobra.Command{
 			installCNI(cmd.Context(), cniReady)
 		}
 
-		// todo wait for stop
+		// todo: wait for stop
 		if err := controller.Run(cniReady); err != nil {
 			log.Fatal(err)
 			return err
@@ -63,7 +64,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Execute excute root command and its child commands
+// Execute executes root command and its child commands
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -91,20 +92,13 @@ func init() {
 	log.SetReportCaller(true)
 
 	// Get some flags from commands
-	rootCmd.PersistentFlags().StringVarP(&config.Mode, "mode", "m", config.ModeIstio, "Service mesh mode, current support istio and linkerd")
-	rootCmd.PersistentFlags().BoolVarP(&config.UseReconnect, "use-reconnect", "r", true, "Use re-connect mode as same-node acceleration")
+	rootCmd.PersistentFlags().StringVarP(&config.Mode, "mode", "m", config.ModeIstio, "Service mesh mode, current support istio, linkerd and kuma")
+	rootCmd.PersistentFlags().BoolVarP(&config.UseReconnect, "use-reconnect", "r", true, "Use re-connect mode for same-node acceleration")
 	rootCmd.PersistentFlags().BoolVarP(&config.Debug, "debug", "d", false, "Debug mode")
-	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Kubernetes in Kind mode")
-	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node ips file name")
+	rootCmd.PersistentFlags().BoolVarP(&config.IsKind, "kind", "k", false, "Enable when Kubernetes is running in Kind")
+	rootCmd.PersistentFlags().StringVarP(&config.IpsFile, "ips-file", "f", "", "Current node IPs filename")
+	_ = rootCmd.PersistentFlags().MarkDeprecated("ips-file", "no need to collect node IPs")
 	rootCmd.PersistentFlags().BoolVar(&config.EnableCNI, "cni-mode", false, "Enable Merbridge CNI plugin")
-	// If hardware checksum not enabled, we should disable tx checksum, otherwise,
-	// this can cause problems with Pods communication across hosts (Kubernetes Service logic) when CNI mode enabled.
-	// Turning this off may make network performance worse.
-	// You can check your node with run `ethtool -k eth0 | grep tx-checksum-ipv4`, (eth0 is your NIC interface name).
-	// If it shows like `tx-checksum-ipv4: off [fixed]`, that means you NIC doesn't support hardware checksum,
-	// you should disable hardwareCheckSum.
-	// We are considering the option of using tc instead of xdp and may not need this feature in the future.
-	rootCmd.PersistentFlags().BoolVar(&config.HardwareCheckSum, "hardware-checksum", false, "Enable hardware checksum")
 	rootCmd.PersistentFlags().StringVar(&config.HostProc, "host-proc", "/host/proc", "/proc mount path")
 	rootCmd.PersistentFlags().StringVar(&config.CNIBinDir, "cni-bin-dir", "/host/opt/cni/bin", "/opt/cni/bin mount path")
 	rootCmd.PersistentFlags().StringVar(&config.CNIConfigDir, "cni-config-dir", "/host/etc/cni/net.d", "/etc/cni/net.d mount path")

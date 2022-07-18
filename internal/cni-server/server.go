@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cniserver
 
 import (
@@ -20,7 +21,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -36,15 +40,21 @@ type Server interface {
 }
 
 type server struct {
-	unixSockPath     string
-	bpfMountPath     string
-	hardwareCheckSum bool
-	stop             chan struct{}
+	sync.Mutex
+	unixSockPath string
+	bpfMountPath string
+	// qdiscs is for cleaning up all tc programs when merbridge exits
+	// key: netns(inode), value: qdisc info
+	qdiscs map[uint64]qdisc
+	// listeners are the dummy sockets created for eBPF programs to fetch the current pod ip
+	// key: netns(inode), value: net.Listener
+	listeners map[uint64]net.Listener
+	stop      chan struct{}
 }
 
 // NewServer returns a new CNI Server.
 // the path this the unix path to listen.
-func NewServer(unixSockPath string, bpfMountPath string, hardwareChecksum bool) Server {
+func NewServer(unixSockPath string, bpfMountPath string) Server {
 	if unixSockPath == "" {
 		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
@@ -52,9 +62,10 @@ func NewServer(unixSockPath string, bpfMountPath string, hardwareChecksum bool) 
 		bpfMountPath = "/sys/fs/bpf"
 	}
 	return &server{
-		unixSockPath:     unixSockPath,
-		bpfMountPath:     bpfMountPath,
-		hardwareCheckSum: hardwareChecksum,
+		unixSockPath: unixSockPath,
+		bpfMountPath: bpfMountPath,
+		qdiscs:       make(map[uint64]qdisc),
+		listeners:    make(map[uint64]net.Listener),
 	}
 }
 
@@ -87,12 +98,21 @@ func (s *server) Start() error {
 	}
 	go func() {
 		go ss.Serve(l) // nolint: errcheck
-		<-s.stop
+		// TODO: unify all clean-up functions
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGABRT)
+		select {
+		case <-ch:
+			s.Stop()
+		case <-s.stop:
+			s.Stop()
+		}
 		_ = ss.Shutdown(context.Background())
 	}()
 	return nil
 }
 
 func (s *server) Stop() {
+	s.cleanUpTC()
 	close(s.stop)
 }

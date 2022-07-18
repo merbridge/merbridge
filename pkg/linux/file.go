@@ -17,40 +17,19 @@ limitations under the License.
 package linux
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"fmt"
+	"os"
+	"syscall"
 )
 
-func TestIP2Linux(t *testing.T) {
-	cases := []struct {
-		ip      string
-		wantErr bool
-		want    uint32
-	}{
-		{
-			ip:   "127.0.0.1",
-			want: 16777343,
-		},
-		{
-			ip:   "10.244.0.7",
-			want: 117502986,
-		},
-		{
-			ip:      "127.0.0.",
-			wantErr: true,
-			// want: 16777343,
-		},
+func GetFileInode(path string) (uint64, error) {
+	f, err := os.Stat(path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get the inode of %s", path)
 	}
-	for _, c := range cases {
-		t.Run(c.ip, func(t *testing.T) {
-			ip, err := IP2Linux(c.ip)
-			if c.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-			assert.Equal(t, c.want, ip)
-		})
+	stat, ok := f.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("not syscall.Stat_t")
 	}
+	return stat.Ino, nil
 }

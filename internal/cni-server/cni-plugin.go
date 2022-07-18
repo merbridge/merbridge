@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cniserver
 
 import (
@@ -32,7 +33,6 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -44,70 +44,14 @@ import (
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func netnsPairEthDo(nsname string, f func(name string, index int) error) error {
-	netNS, err := ns.GetNS(nsname)
-	if err != nil {
-		return err
-	}
-	pairIndexes := []int{}
-	err = netNS.Do(func(_ ns.NetNS) error {
-		ifaces, _ := net.Interfaces()
-		for _, iface := range ifaces {
-			if iface.Name == "lo" {
-				continue
-			}
-			addrs, err := iface.Addrs()
-			if err != nil || len(addrs) == 0 {
-				continue
-			}
-
-			buf := new(bytes.Buffer)
-			c := exec.Command("sh", "-c", fmt.Sprintf("ip link show %s | awk 'NR<2{print $2}' | tr ':' ' ' | awk -F '@if' '{print $2}'", iface.Name))
-			c.Stdout = buf
-			if err := c.Run(); err != nil {
-				return fmt.Errorf("not get pair ifindex: %v", err)
-			}
-			pairIndex, err := strconv.Atoi(strings.TrimSpace(buf.String()))
-			if err != nil {
-				return fmt.Errorf("not get pair ifindex: %v", err)
-			}
-			pairIndexes = append(pairIndexes, pairIndex)
-			err = f(iface.Name, iface.Index)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	ifaces, _ := net.Interfaces()
-	find := false
-	for _, iface := range ifaces {
-		for _, index := range pairIndexes {
-			if iface.Index == index {
-				find = true
-				err = f(iface.Name, iface.Index)
-				if err != nil {
-					return err
-				}
-				break
-			}
-		}
-	}
-	if !find {
-		return fmt.Errorf("merbridge requires pair eth for pod's eth")
-	}
-	return nil
-}
-
-func getXDPPinnedPath(bpfPath, ns, pod, eth string) string {
-	return path.Join(bpfPath, "xdps", ns, pod, eth)
+type qdisc struct {
+	netns     string
+	device    string
+	hasClsact bool
 }
 
 func getMarkKeyOfNetns(netns string) uint32 {
-	// todo check confict?
+	// todo check conflict?
 	algorithm := fnv.New32a()
 	_, _ = algorithm.Write([]byte(netns))
 	return algorithm.Sum32()
@@ -132,48 +76,29 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
-	netNS, err := ns.GetNS("/host" + args.Netns)
+	netns, err := ns.GetNS("/host" + args.Netns)
 	if err != nil {
 		log.Errorf("get ns %s error", args.Netns)
 		return err
 	}
-	err = netNS.Do(func(_ ns.NetNS) error {
+	err = netns.Do(func(_ ns.NetNS) error {
 		// listen on 39807
-		return s.buildListener(netNS.Path())
-	})
-	if err != nil {
-		log.Errorf("Failed to build listener for %s: %v", args.Netns, err)
-		return err
-	}
-	// attach xdp to the veth pair
-	err = netnsPairEthDo(netNS.Path(), func(name string, index int) error {
-		if !s.hardwareCheckSum {
-			log.Debugf("disable hardware checksum for pod(%s/%s)", string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME))
-			c := exec.Command("sh", "-c", fmt.Sprintf("ethtool -K %s tx off", name))
-			if err := c.Run(); err != nil {
-				return fmt.Errorf("disable %s tx off error: %v", name, err)
+		if err := s.buildListener(netns.Path()); err != nil {
+			return err
+		}
+		// attach tc to the device
+		ifaces, _ := net.Interfaces()
+		for _, iface := range ifaces {
+			if iface.Name != "lo" {
+				return s.attachTC(netns.Path(), iface.Name)
 			}
 		}
-		xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
-		// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
-		if err != nil {
-			log.Errorf("Failed to load %s: %v", path.Join(s.bpfMountPath, "mb_xdp"), err)
-			return err
-		}
-
-		l, err := link.AttachXDP(link.XDPOptions{
-			Program:   xdp,
-			Interface: index,
-			Flags:     link.XDPGenericMode,
-		})
-		if err != nil {
-			log.Errorf("Failed to attach xdp to interface (index: %d): %v", index, err)
-			return err
-		}
-		p := getXDPPinnedPath(s.bpfMountPath, string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME), name)
-		_ = os.MkdirAll(p, os.ModePerm)
-		return l.Pin(path.Join(p, "mb_xdp"))
+		return fmt.Errorf("device not found for %s", args.Netns)
 	})
+	if err != nil {
+		log.Errorf("CmdAdd failed for %s: %v", args.Netns, err)
+		return err
+	}
 	return err
 }
 
@@ -182,8 +107,15 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
-	p := path.Join(s.bpfMountPath, "xdps", string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME))
-	os.RemoveAll(p)
+	netns := "/host" + args.Netns
+	inode, err := linux.GetFileInode(netns)
+	if err != nil {
+		return err
+	}
+	s.Lock()
+	delete(s.qdiscs, inode)
+	delete(s.listeners, inode)
+	s.Unlock()
 	m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
 	if err != nil {
 		return err
@@ -194,7 +126,11 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 
 // listen on 39807
 func (s *server) buildListener(netns string) error {
-	addrs := []net.Addr{}
+	inode, err := linux.GetFileInode(netns)
+	if err != nil {
+		return err
+	}
+	var addrs []net.Addr
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
 		if iface.Name == "lo" {
@@ -218,16 +154,10 @@ func (s *server) buildListener(netns string) error {
 	if err != nil {
 		return err
 	}
-	go func() {
-		// keep listener
-		for {
-			_, err := l.Accept()
-			if err != nil {
-				// only break loop if error.
-				break
-			}
-		}
-	}()
+	s.Lock()
+	// keep the listener, otherwise it will be GCed
+	s.listeners[inode] = l
+	s.Unlock()
 	return nil
 }
 
@@ -252,7 +182,7 @@ func (s *server) listenConfig(addr net.Addr, netns string) net.ListenConfig {
 					operr = err
 					return
 				}
-				var key uint32 = getMarkKeyOfNetns(netns)
+				key := getMarkKeyOfNetns(netns)
 				operr = m.Update(key, ip, ebpf.UpdateAny)
 				if operr != nil {
 					return
@@ -274,57 +204,36 @@ func (s *server) checkAndRepairPodPrograms() error {
 	for _, f := range hostProc {
 		if _, err = strconv.Atoi(f.Name()); err == nil {
 			pid := f.Name()
+			if skipListening(pid) {
+				// ignore non-injected pods
+				log.Debugf("skip listening for pid(%s)", pid)
+				continue
+			}
 			np := fmt.Sprintf("%s/%s/ns/net", config.HostProc, pid)
 			netns, err := ns.GetNS(np)
 			if err != nil {
 				log.Errorf("Failed to get ns for %s, error: %v", np, err)
 				continue
 			}
-			if skipListening(pid) {
-				// ignore uninjected pods
-				log.Debugf("skip listening for pid(%s)", pid)
-				continue
-			}
 			if err = netns.Do(func(_ ns.NetNS) error {
 				log.Infof("build listener for pid(%s)", pid)
 				// listen on 39807
-				return s.buildListener(netns.Path())
+				if err := s.buildListener(netns.Path()); err != nil {
+					return err
+				}
+				// attach tc to the device
+				ifaces, _ := net.Interfaces()
+				for _, iface := range ifaces {
+					if iface.Name != "lo" {
+						return s.attachTC(netns.Path(), iface.Name)
+					}
+				}
+				return fmt.Errorf("device not found for pid(%s)", pid)
 			}); err != nil {
 				if errors.Is(err, syscall.EADDRINUSE) {
 					// skip if it has listened on 39807
 					continue
 				}
-				return err
-			}
-			// attach xdp to the veth pair
-			if err = netnsPairEthDo(netns.Path(), func(name string, index int) error {
-				if !s.hardwareCheckSum {
-					log.Debugf("disable hardware checksum for pid(%s)", pid)
-					c := exec.Command("sh", "-c", fmt.Sprintf("ethtool -K %s tx off", name))
-					if err := c.Run(); err != nil {
-						return fmt.Errorf("disable %s tx off error: %v", name, err)
-					}
-				}
-				xdp, err := ebpf.LoadPinnedProgram(path.Join(s.bpfMountPath, "mb_xdp"), &ebpf.LoadPinOptions{})
-				// todo support load by ID: xdp, err := ebpf.NewProgramFromID(1595)
-				if err != nil {
-					log.Errorf("Failed to load %s: %v", path.Join(s.bpfMountPath, "mb_xdp"), err)
-					return err
-				}
-
-				l, err := link.AttachXDP(link.XDPOptions{
-					Program:   xdp,
-					Interface: index,
-					Flags:     link.XDPGenericMode,
-				})
-				if err != nil {
-					log.Errorf("Failed to attach xdp to interface (index: %d): %v", index, err)
-					return err
-				}
-				p := getXDPPinnedPath(s.bpfMountPath, pid, pid, name)
-				_ = os.MkdirAll(p, os.ModePerm)
-				return l.Pin(path.Join(p, "mb_xdp"))
-			}); err != nil {
 				return err
 			}
 		}
@@ -354,4 +263,76 @@ func skipListening(pid string) bool {
 
 	conn4 := fmt.Sprintf("%s/%s/net/tcp", config.HostProc, pid)
 	return !findStr(conn4, []byte(fmt.Sprintf(": %0.8d:%0.4X %0.8d:%0.4X 0A", 0, 15001, 0, 0)))
+}
+
+func (s *server) attachTC(netns, dev string) error {
+	inode, err := linux.GetFileInode(netns)
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("tc qdisc add dev %s clsact", dev))
+	err = cmd.Run()
+	hasCls := false
+	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+		log.Errorf("Add clsact to %s failed: unexpected exit code: %d, err: %v", dev, code, err)
+		// TODO(dddddai): check if clsact exists
+		hasCls = true
+	}
+
+	obj := "bpf/mb_tc.o"
+
+	cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter add prio 66 dev %s ingress bpf da obj %s sec classifier_ingress", dev, obj))
+	err = cmd.Run()
+	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+		return fmt.Errorf("failed to attach tc(ingress) to %s, unexpected exit code: %d, err: %v", dev, code, err)
+	}
+	cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter add prio 66 dev %s egress bpf da obj %s sec classifier_egress", dev, obj))
+	err = cmd.Run()
+	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+		return fmt.Errorf("failed to attach tc(egress) to %s, unexpected exit code: %d, err: %v", dev, code, err)
+	}
+
+	s.Lock()
+	s.qdiscs[inode] = qdisc{
+		netns:     netns,
+		device:    dev,
+		hasClsact: hasCls,
+	}
+	s.Unlock()
+	return nil
+}
+
+func (s *server) cleanUpTC() {
+	s.Lock()
+	defer s.Unlock()
+	for _, q := range s.qdiscs {
+		netns, err := ns.GetNS(q.netns)
+		if err != nil {
+			log.Errorf("Failed to get ns for %s, error: %v", q.netns, err)
+			continue
+		}
+		if err = netns.Do(func(_ ns.NetNS) error {
+			if !q.hasClsact {
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("tc qdisc delete dev %s clsact", q.device))
+				err := cmd.Run()
+				if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+					return fmt.Errorf("failed to delete clsact from %s, unexpected exit code: %d, err: %v", q.device, code, err)
+				}
+			} else {
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("tc filter delete dev %s egress prio 66", q.device))
+				err := cmd.Run()
+				if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+					return fmt.Errorf("failed to delete egress filter from %s, unexpected exit code: %d, err: %v", q.device, code, err)
+				}
+				cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter delete dev %s ingress prio 66", q.device))
+				err = cmd.Run()
+				if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
+					return fmt.Errorf("failed to delete ingress filter from %s, unexpected exit code: %d, err: %v", q.device, code, err)
+				}
+			}
+			return nil
+		}); err != nil {
+			log.Errorf("Failed to clean up tc for %s, error: %v", q.netns, err)
+		}
+	}
 }

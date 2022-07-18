@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package pods
 
 import v1 "k8s.io/api/core/v1"
@@ -29,6 +30,15 @@ func IsIstioInjectedSidecar(pod *v1.Pod) bool {
 func IsLinkerdInjectedSidecar(pod *v1.Pod) bool {
 	for _, c := range pod.Spec.Containers {
 		if c.Name == "linkerd-proxy" && len(pod.Spec.Containers) != 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func IsKumaInjectedSidecar(pod *v1.Pod) bool {
+	for _, c := range pod.Spec.Containers {
+		if c.Name == "kuma-sidecar" && len(pod.Spec.Containers) != 1 {
 			return true
 		}
 	}

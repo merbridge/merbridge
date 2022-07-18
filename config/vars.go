@@ -13,25 +13,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package config
 
 const (
 	ModeIstio   = "istio"
 	ModeLinkerd = "linkerd"
-	LocalPodIps = "/sys/fs/bpf/local_pod_ips"
+	ModeKuma    = "kuma"
+	LocalPodIps = "/sys/fs/bpf/tc/globals/local_pod_ips"
 )
 
 var (
-	CurrentNodeIP    string
-	Mode             string
-	IpsFile          string
-	UseReconnect     = true
-	Debug            = false
-	EnableCNI        = false
-	HardwareCheckSum = false
-	IsKind           = false // is Run Kubernetes in Docker
-	HostProc         string
-	CNIBinDir        string
-	CNIConfigDir     string
-	HostVarRun       string
+	Mode         string
+	IpsFile      string // not used
+	UseReconnect = true
+	Debug        = false
+	EnableCNI    = false
+	IsKind       = false // is Kubernetes running in Docker
+	HostProc     string
+	CNIBinDir    string
+	CNIConfigDir string
+	HostVarRun   string
 )

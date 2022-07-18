@@ -28,8 +28,8 @@ lint: lint-c lint-go
 
 format: format-c format-go
 
-# update generated yaml for merbridge on linkerd and istio deploy templates
-helm: helm-linkerd helm-istio
+# update generated yaml for merbridge on linkerd, istio and kuma deploy templates
+helm: helm-linkerd helm-istio helm-kuma
 
 # generate merbridge on linkerd deploy templates
 helm-linkerd:
@@ -38,6 +38,10 @@ helm-linkerd:
 # generate merbridge on istio deploy templates
 helm-istio:
 	helm template -n "istio-system" merbridge helm > deploy/all-in-one.yaml
+
+# generate merbridge on kuma deploy templates
+helm-kuma:
+	helm template --set-string "mode=kuma" -n "kuma-system" merbridge helm > deploy/all-in-one-kuma.yaml
 
 # package helm release
 helm-package:
@@ -69,3 +73,13 @@ helm-ci: helm-install
 	fi
 
 	@rm -rf deploy/all-in-one-linkerd-g.yaml
+
+	@echo "start to check deploy/all-in-one-kuma.yaml"
+	@helm template --set-string "mode=kuma" -n "kuma-system" merbridge helm > deploy/all-in-one-kuma-g.yaml
+	@cmp -s deploy/all-in-one-kuma.yaml deploy/all-in-one-kuma-g.yaml; \
+	RETVAL=$$?; \
+	if [ $$RETVAL -ne 0 ]; then \
+	  echo "deploy/all-in-one-kuma.yaml is incorrect, remember to run make helm-kuma to update all-in-one-kuma.yaml"; rm -rf deploy/all-in-one-kuma-g.yaml; exit 1; \
+	fi
+
+	@rm -rf deploy/all-in-one-kuma-g.yaml

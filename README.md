@@ -18,6 +18,12 @@ Or on Linkerd cluster:
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-linkerd.yaml
 ```
 
+Or on Kuma cluster:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-kuma.yaml
+```
+
 > Note: currently only works on Linux kernel >= 5.7, run `uname -r` check your kernel version before install merbridge.
 
 If you want to install Merbridge by `Helm`, read the guidelines: [Deploy Merbridge with Helm](deploy/).
@@ -32,6 +38,11 @@ kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/dep
 - Linkerd:
 ```bash
 kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-linkerd.yaml
+```
+
+- Kuma:
+```bash
+kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-kuma.yaml
 ```
 
 ## Get involved
