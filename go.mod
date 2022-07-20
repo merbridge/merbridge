@@ -7,7 +7,7 @@ require (
 	github.com/containernetworking/plugins v1.1.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
-	github.com/stretchr/testify v1.7.3
+	github.com/stretchr/testify v1.8.0
 	k8s.io/api v0.23.6
 	k8s.io/client-go v0.23.6
 )
