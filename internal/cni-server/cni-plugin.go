@@ -87,9 +87,13 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 			return err
 		}
 		// attach tc to the device
+		if len(args.IfName) != 0 {
+			return s.attachTC(netns.Path(), args.IfName)
+		}
+		// interface not specified, should not happen?
 		ifaces, _ := net.Interfaces()
 		for _, iface := range ifaces {
-			if iface.Name != "lo" {
+			if (iface.Flags&net.FlagLoopback) == 0 && (iface.Flags&net.FlagUp) != 0 {
 				return s.attachTC(netns.Path(), iface.Name)
 			}
 		}
@@ -224,7 +228,7 @@ func (s *server) checkAndRepairPodPrograms() error {
 				// attach tc to the device
 				ifaces, _ := net.Interfaces()
 				for _, iface := range ifaces {
-					if iface.Name != "lo" {
+					if (iface.Flags&net.FlagLoopback) == 0 && (iface.Flags&net.FlagUp) != 0 {
 						return s.attachTC(netns.Path(), iface.Name)
 					}
 				}
