@@ -1,5 +1,5 @@
 
-FROM ubuntu:20.04 as compiler
+FROM ubuntu:22.04 as compiler
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ ADD . .
 RUN go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
 RUN go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 WORKDIR /app
 
