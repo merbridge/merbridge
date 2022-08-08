@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/DaoCloud/ckube v1.0.11
 	github.com/containernetworking/cni v1.1.0
 	github.com/gorilla/mux v1.8.0
 	github.com/pkg/errors v0.9.1
