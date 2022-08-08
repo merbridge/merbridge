@@ -34,4 +34,6 @@ var (
 	CNIBinDir    string
 	CNIConfigDir string
 	HostVarRun   string
+	KubeConfig   string
+	Context      string
 )
