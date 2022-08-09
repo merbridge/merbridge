@@ -103,8 +103,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&config.CNIBinDir, "cni-bin-dir", "/host/opt/cni/bin", "/opt/cni/bin mount path")
 	rootCmd.PersistentFlags().StringVar(&config.CNIConfigDir, "cni-config-dir", "/host/etc/cni/net.d", "/etc/cni/net.d mount path")
 	rootCmd.PersistentFlags().StringVar(&config.HostVarRun, "host-var-run", "/host/var/run", "/var/run mount path")
-	rootCmd.PersistentFlags().StringVarP(&config.KubeConfig, "kubeconfig", "c", "", "Kubernetes configuration file")
-	rootCmd.PersistentFlags().StringVar(&config.Context, "context", "", "The name of the kube config context to use")
+	rootCmd.PersistentFlags().StringVar(&config.KubeConfig, "kubeconfig", "", "Kubernetes configuration file")
+	rootCmd.PersistentFlags().StringVar(&config.Context, "kubecontext", "", "The name of the kube config context to use")
 }
 
 func installCNI(ctx context.Context, cniReady chan struct{}) {
