@@ -119,3 +119,55 @@ func Test_parseConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_parsePodConfigFromAnnotationsKuma(t *testing.T) {
+	cases := []struct {
+		name        string
+		annotations map[string]string
+		expect      *podConfig
+	}{
+		{
+			name:        "empty",
+			annotations: map[string]string{},
+			expect: &podConfig{
+				excludeInPorts: [MaxItemLen]uint16{
+					9901, 15001, 15006, 15010,
+				},
+			},
+		},
+		{
+			name: "excludeInboundPorts",
+			annotations: map[string]string{
+				"traffic.kuma.io/exclude-inbound-ports": "12345,80",
+			},
+			expect: &podConfig{
+				excludeInPorts: [MaxItemLen]uint16{
+					9901, 15001, 15006, 15010,
+					12345,
+					80,
+				},
+			},
+		},
+		{
+			name: "excludeOutboundPorts",
+			annotations: map[string]string{
+				"traffic.kuma.io/exclude-outbound-ports": "12345,80",
+			},
+			expect: &podConfig{
+				excludeInPorts: [MaxItemLen]uint16{
+					9901, 15001, 15006, 15010,
+				},
+				excludeOutPorts: [MaxItemLen]uint16{
+					12345, 80,
+				},
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out := podConfig{}
+			parsePodConfigFromAnnotationsKuma(c.annotations, &out)
+			assert.Equal(t, c.expect, &out)
+		})
+	}
+}

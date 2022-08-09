@@ -28,43 +28,43 @@ import (
 func (s *server) PodCreated(w http.ResponseWriter, req *http.Request) {
 	bs, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
 	}
 	args := skel.CmdArgs{}
 	err = json.Unmarshal(bs, &args)
 	log.Infof("cni called create with args: %+v", args)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
 	}
 	err = s.CmdAdd(&args)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
 	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
 }
 
 func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
 	bs, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
 	}
 	args := skel.CmdArgs{}
 	err = json.Unmarshal(bs, &args)
 	log.Infof("cni called delete with args: %+v", args)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
 	}
 	err = s.CmdDelete(&args)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
 	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
 }

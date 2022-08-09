@@ -1,0 +1,16 @@
+{
+  "proxies": [
+    {
+      "group": "",
+      "version": "v1",
+      "resource": "pods",
+      "list_kind": "PodList",
+      "index": {
+        "namespace": "{.metadata.namespace}",
+        "name": "{.metadata.name}",
+        "labels": "{.metadata.labels}",
+        "createdAt": "{.metadata.creationTimestamp}"
+      }
+    }
+  ]
+}

@@ -259,6 +259,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 
 func parsePodConfigFromAnnotationsKuma(annotations map[string]string, pod *podConfig) {
 	excludeInboundPorts := []uint16{9901, 15001, 15006, 15010} // todo changeme
+	// FIXME: Whether to need to consistent with the naming Isito an Annotation: hump method
 	if v, ok := annotations["traffic.kuma.io/exclude-inbound-ports"]; ok {
 		excludeInboundPorts = append(excludeInboundPorts, getPortsFromString(v)...)
 	}
