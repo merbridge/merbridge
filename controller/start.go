@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/merbridge/merbridge/app/cmd/options"
+	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/controller/localip"
 	"github.com/merbridge/merbridge/pkg/kube"
 )
@@ -38,8 +39,7 @@ func Run(cniReady chan struct{}) error {
 	}
 
 	// get default kubernetes client
-	// TODO(Xunzhuo): pass kubeconfig and context by flags
-	client, err = kube.GetKubernetesClientWithFile("", "")
+	client, err = kube.GetKubernetesClientWithFile(config.KubeConfig, config.Context)
 	if err != nil {
 		return fmt.Errorf("create client error: %v", err)
 	}
