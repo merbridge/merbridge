@@ -20,7 +20,7 @@ KUMA_VERSION=${KUMA_VERSION:-1.7.0}
 if [ -z "$SKIP_INSTALL" ]; then
     tmp=$(mktemp -d)
     pushd "${tmp}"
-    VERSION=$KUMA_VERSION curl -L https://kuma.io/installer.sh | bash -
+    curl -L https://kuma.io/installer.sh | VERSION=$KUMA_VERSION bash -
     sudo cp -rf "kuma-${KUMA_VERSION}/bin/kumactl" /usr/local/bin
     popd
     rm -rf "${tmp}"
