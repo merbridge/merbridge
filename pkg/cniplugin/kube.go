@@ -20,6 +20,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/merbridge/merbridge/config"
+
 	log "github.com/sirupsen/logrus"
 	"istio.io/api/annotation"
 	meshconfig "istio.io/api/mesh/v1alpha1"
@@ -40,7 +42,7 @@ var (
 
 // copied from https://github.com/istio/istio/blob/1.13.3/cni/pkg/plugin/plugin.go#L94-L120
 // newKubeClient returns a Kubernetes client
-func newKubeClient(conf plugin.Config) (*kubernetes.Clientset, error) {
+func newKubeClient(conf Config) (*kubernetes.Clientset, error) {
 	// Some config can be passed in a kubeconfig file
 	kubeconfig := conf.Kubernetes.Kubeconfig
 
@@ -58,10 +60,15 @@ func newKubeClient(conf plugin.Config) (*kubernetes.Clientset, error) {
 
 // references https://github.com/istio/istio/blob/1.13.3/cni/pkg/plugin/kubernetes.go#L65-L110
 // getKubePodInfo returns information of a POD
-func getKubePodInfo(client *kubernetes.Clientset, podName, podNamespace string) (*plugin.PodInfo, error) {
+func getKubePodInfo(client *kubernetes.Clientset, podName, podNamespace, serviceMeshMode string) (*plugin.PodInfo, error) {
 	pod, err := client.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
+	}
+
+	proxyContainerName := "istio-proxy"
+	if serviceMeshMode == config.ModeKuma {
+		proxyContainerName = "kuma-dp"
 	}
 
 	pi := &plugin.PodInfo{
@@ -73,8 +80,9 @@ func getKubePodInfo(client *kubernetes.Clientset, podName, podNamespace string) 
 		log.Debugf("Inspecting pod %v/%v container %v", podNamespace, podName, container.Name)
 		pi.Containers[containerIdx] = container.Name
 
-		if container.Name == "istio-proxy" {
-			// don't include ports from istio-proxy in the redirect ports
+		if container.Name == proxyContainerName {
+			// don't include ports from mesh proxy container (istio-proxy or kuma-dp)
+			// in the redirect ports
 			// Get proxy container env variable, and extract out ProxyConfig from it.
 			for _, e := range container.Env {
 				pi.ProxyEnvironments[e.Name] = e.Value

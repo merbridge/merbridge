@@ -41,8 +41,9 @@ type Server interface {
 
 type server struct {
 	sync.Mutex
-	unixSockPath string
-	bpfMountPath string
+	serviceMeshMode string
+	unixSockPath    string
+	bpfMountPath    string
 	// qdiscs is for cleaning up all tc programs when merbridge exits
 	// key: netns(inode), value: qdisc info
 	qdiscs map[uint64]qdisc
@@ -54,7 +55,7 @@ type server struct {
 
 // NewServer returns a new CNI Server.
 // the path this the unix path to listen.
-func NewServer(unixSockPath string, bpfMountPath string) Server {
+func NewServer(serviceMeshMode string, unixSockPath string, bpfMountPath string) Server {
 	if unixSockPath == "" {
 		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
@@ -62,10 +63,11 @@ func NewServer(unixSockPath string, bpfMountPath string) Server {
 		bpfMountPath = "/sys/fs/bpf"
 	}
 	return &server{
-		unixSockPath: unixSockPath,
-		bpfMountPath: bpfMountPath,
-		qdiscs:       make(map[uint64]qdisc),
-		listeners:    make(map[uint64]net.Listener),
+		serviceMeshMode: serviceMeshMode,
+		unixSockPath:    unixSockPath,
+		bpfMountPath:    bpfMountPath,
+		qdiscs:          make(map[uint64]qdisc),
+		listeners:       make(map[uint64]net.Listener),
 	}
 }
 

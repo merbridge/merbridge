@@ -64,6 +64,7 @@ current-context: merbridge-cni-context
 )
 
 type Installer struct {
+	serviceMeshMode    string
 	kubeConfigFilepath string
 	cniConfigFilepath  string
 }
@@ -77,8 +78,10 @@ type kubeconfigFields struct {
 }
 
 // NewInstaller returns an instance of Installer with the given config
-func NewInstaller() *Installer {
-	return &Installer{}
+func NewInstaller(serviceMeshMode string) *Installer {
+	return &Installer{
+		serviceMeshMode: serviceMeshMode,
+	}
 }
 
 // Run starts the installation process, verifies the configuration, then sleeps.
@@ -98,7 +101,7 @@ func (in *Installer) Run(ctx context.Context, cniReady chan struct{}) error {
 			return err
 		}
 
-		if in.cniConfigFilepath, err = createCNIConfigFile(ctx); err != nil {
+		if in.cniConfigFilepath, err = createCNIConfigFile(ctx, in.serviceMeshMode); err != nil {
 			return err
 		}
 		if len(cniReady) == 0 {
@@ -165,15 +168,18 @@ func (in *Installer) Cleanup() error {
 	return nil
 }
 
-func createCNIConfigFile(ctx context.Context) (string, error) {
+func createCNIConfigFile(ctx context.Context, serviceMeshMode string) (string, error) {
 	// TODO(dddddai): support ExcludeNamespaces?
 	mbCNIConfig := fmt.Sprintf(`
 	{
 		"type": "merbridge-cni",
 		"kubernetes": {
 			"kubeconfig": "/etc/cni/net.d/%s"
+		},
+		"args": {
+			"serviceMeshMode": %q
 		}
-	}`, kubeConfigFileName)
+	}`, kubeConfigFileName, serviceMeshMode)
 
 	return writeCNIConfig(ctx, []byte(mbCNIConfig))
 }

@@ -47,12 +47,12 @@ var rootCmd = &cobra.Command{
 
 		cniReady := make(chan struct{}, 1)
 		if config.EnableCNI {
-			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
+			s := cniserver.NewServer(config.Mode, path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
 			}
-			installCNI(cmd.Context(), cniReady)
+			installCNI(cmd.Context(), config.Mode, cniReady)
 		}
 
 		// todo: wait for stop
@@ -107,8 +107,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&config.Context, "kubecontext", "", "The name of the kube config context to use")
 }
 
-func installCNI(ctx context.Context, cniReady chan struct{}) {
-	installer := cniserver.NewInstaller()
+func installCNI(ctx context.Context, serviceMeshMode string, cniReady chan struct{}) {
+	installer := cniserver.NewInstaller(serviceMeshMode)
 	go func() {
 		if err := installer.Run(ctx, cniReady); err != nil {
 			log.Error(err)

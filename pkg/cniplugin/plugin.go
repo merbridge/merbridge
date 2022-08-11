@@ -20,54 +20,29 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/merbridge/merbridge/config"
+
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	cniv1 "github.com/containernetworking/cni/pkg/types/100"
-	"github.com/containernetworking/cni/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"istio.io/istio/cni/pkg/plugin"
 
 	"github.com/merbridge/merbridge/config/constants"
 )
 
-// copied from https://github.com/istio/istio/blob/1.13.3/cni/pkg/plugin/plugin.go#L94-L120
-// parseConfig parses the supplied configuration (and prevResult) from stdin.
-func parseConfig(stdin []byte) (*plugin.Config, error) {
-	conf := plugin.Config{}
-
-	if err := json.Unmarshal(stdin, &conf); err != nil {
-		return nil, fmt.Errorf("failed to parse network configuration: %v", err)
-	}
-
-	// Parse previous result. Remove this if your plugin is not chained.
-	if conf.RawPrevResult != nil {
-		resultBytes, err := json.Marshal(conf.RawPrevResult)
-		if err != nil {
-			return nil, fmt.Errorf("could not serialize prevResult: %v", err)
-		}
-		res, err := version.NewResult(conf.CNIVersion, resultBytes)
-		if err != nil {
-			return nil, fmt.Errorf("could not parse prevResult: %v", err)
-		}
-		conf.RawPrevResult = nil
-		conf.PrevResult, err = cniv1.NewResultFromResult(res)
-		if err != nil {
-			return nil, fmt.Errorf("could not convert result to current version: %v", err)
-		}
-	}
-	// End previous result parsing
-
-	return &conf, nil
-}
+const (
+	KumaInjectionLabel     = "kuma.io/sidecar-injection"
+	KumaInjectedAnnotation = "kuma.io/sidecar-injected"
+)
 
 // references https://github.com/istio/istio/blob/1.13.3/cni/pkg/plugin/plugin.go#L205
-func ignore(conf *plugin.Config, k8sArgs *plugin.K8sArgs) bool {
+func ignore(conf *Config, k8sArgs *plugin.K8sArgs) bool {
 	ns := string(k8sArgs.K8S_POD_NAMESPACE)
 	name := string(k8sArgs.K8S_POD_NAME)
 	if ns != "" && name != "" {
@@ -84,7 +59,7 @@ func ignore(conf *plugin.Config, k8sArgs *plugin.K8sArgs) bool {
 		}
 		pi := &plugin.PodInfo{}
 		for attempt := 1; attempt <= podRetrievalMaxRetries; attempt++ {
-			pi, err = getKubePodInfo(client, name, ns)
+			pi, err = getKubePodInfo(client, name, ns, conf.Args.ServiceMeshMode)
 			if err == nil {
 				break
 			}
@@ -95,13 +70,49 @@ func ignore(conf *plugin.Config, k8sArgs *plugin.K8sArgs) bool {
 			log.Errorf("Failed to get %s/%s pod info: %v", ns, name, err)
 			return true
 		}
-		return ignorePod(ns, name, pi)
+
+		switch conf.Args.ServiceMeshMode {
+		case config.ModeKuma:
+			return ignorePodKuma(ns, name, pi)
+		case config.ModeIstio:
+			fallthrough
+		default:
+			return ignorePodIstio(ns, name, pi)
+		}
 	}
 	log.Debugf("Not a kubernetes pod")
 	return true
 }
 
-func ignorePod(namespace, name string, pod *plugin.PodInfo) bool {
+func ignorePodKuma(namespace, name string, pod *plugin.PodInfo) bool {
+	if len(pod.Containers) > 1 {
+		if val, ok := pod.Labels[KumaInjectionLabel]; ok {
+			if val == "false" || val == "disabled" {
+				log.Infof("Pod %s/%s excluded due to %s: %s label", namespace,
+					name, KumaInjectionLabel, val)
+
+				return true
+			}
+		}
+
+		if val, ok := pod.Annotations[KumaInjectedAnnotation]; !ok || val != "true" {
+			log.Infof("Pod %s/%s excluded due to missing injection status annotation or it "+
+				"being equal false", namespace, name)
+			return true
+		}
+
+		log.Infof("Pod %s/%s excluded because it doesn't contain kuma-dp container",
+			namespace, name)
+
+		return false
+	}
+
+	log.Infof("Pod %s/%s excluded because it only has 1 container", namespace, name)
+
+	return true
+}
+
+func ignorePodIstio(namespace, name string, pod *plugin.PodInfo) bool {
 	if val, ok := pod.ProxyEnvironments["DISABLE_ENVOY"]; ok {
 		if val, err := strconv.ParseBool(val); err == nil && val {
 			log.Infof("Pod %s/%s excluded due to DISABLE_ENVOY on istio-proxy", namespace, name)
