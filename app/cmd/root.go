@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 				log.Fatal(err)
 				return err
 			}
-			installCNI(cmd.Context(), config.Mode, cniReady)
+			installCNI(cmd.Context(), cniReady)
 		}
 
 		// todo: wait for stop
@@ -107,8 +107,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&config.Context, "kubecontext", "", "The name of the kube config context to use")
 }
 
-func installCNI(ctx context.Context, serviceMeshMode string, cniReady chan struct{}) {
-	installer := cniserver.NewInstaller(serviceMeshMode)
+func installCNI(ctx context.Context, cniReady chan struct{}) {
+	installer := cniserver.NewInstaller(config.Mode)
 	go func() {
 		if err := installer.Run(ctx, cniReady); err != nil {
 			log.Error(err)
