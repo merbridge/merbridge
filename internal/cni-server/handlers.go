@@ -18,7 +18,7 @@ package cniserver
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -26,7 +26,7 @@ import (
 )
 
 func (s *server) PodCreated(w http.ResponseWriter, req *http.Request) {
-	bs, err := ioutil.ReadAll(req.Body)
+	bs, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
@@ -48,7 +48,7 @@ func (s *server) PodCreated(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
-	bs, err := ioutil.ReadAll(req.Body)
+	bs, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))

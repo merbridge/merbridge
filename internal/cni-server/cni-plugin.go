@@ -254,8 +254,6 @@ func skipListening(serviceMeshMode string, pid string) bool {
 		if comm != "kuma-dp" {
 			return true
 		}
-	case config.ModeIstio:
-		fallthrough
 	default:
 		if comm != "pilot-agent" {
 			return true

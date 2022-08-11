@@ -307,9 +307,8 @@ func Test_ignore(t *testing.T) {
 	defer os.RemoveAll(filepath.Dir(kubeConfig))
 
 	type args struct {
-		serviceMeshMode string
-		conf            *Config
-		k8sArgs         *plugin.K8sArgs
+		conf    *Config
+		k8sArgs *plugin.K8sArgs
 	}
 	tests := []struct {
 		name     string

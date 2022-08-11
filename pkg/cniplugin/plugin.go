@@ -74,8 +74,6 @@ func ignore(conf *Config, k8sArgs *plugin.K8sArgs) bool {
 		switch conf.Args.ServiceMeshMode {
 		case config.ModeKuma:
 			return ignorePodKuma(ns, name, pi)
-		case config.ModeIstio:
-			fallthrough
 		default:
 			return ignorePodIstio(ns, name, pi)
 		}
