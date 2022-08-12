@@ -140,7 +140,7 @@ static inline __u32 get_ipv4(__u32 *ip) { return ip[3]; }
 
 static inline void set_ipv4(__u32 *dst, __u32 src)
 {
-    __builtin_memset(dst, 0, sizeof(__u32) * 3);
+    memset(dst, 0, sizeof(__u32) * 3);
     dst[3] = src;
 }
 
