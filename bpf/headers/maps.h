@@ -30,7 +30,7 @@ struct bpf_elf_map __section("maps") cookie_original_dst = {
 // only contains injected pods.
 struct bpf_elf_map __section("maps") local_pod_ips = {
     .type = BPF_MAP_TYPE_HASH,
-    .size_key = sizeof(__u32),
+    .size_key = sizeof(__u32) * 4,
     .size_value = sizeof(struct pod_config),
     .max_elem = 1024,
     .pinning = PIN_GLOBAL_NS,
@@ -62,6 +62,6 @@ struct bpf_elf_map __section("maps") sock_pair_map = {
 struct bpf_elf_map __section("maps") mark_pod_ips_map = {
     .type = BPF_MAP_TYPE_HASH,
     .size_key = sizeof(__u32),
-    .size_value = sizeof(__u32), // todo ipv6
+    .size_value = sizeof(__u32) * 4,
     .max_elem = 65535,
 };

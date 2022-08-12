@@ -16,6 +16,10 @@ limitations under the License.
 
 package config
 
+import (
+	"os"
+)
+
 const (
 	ModeIstio   = "istio"
 	ModeLinkerd = "linkerd"
@@ -29,6 +33,8 @@ var (
 	UseReconnect = true
 	Debug        = false
 	EnableCNI    = false
+	EnableIPV4   = getEnvOrDefault("ENABLE_IPV4", "true") == "true"
+	EnableIPV6   = getEnvOrDefault("ENABLE_IPV6", "false") == "true"
 	IsKind       = false // is Kubernetes running in Docker
 	HostProc     string
 	CNIBinDir    string
@@ -37,3 +43,10 @@ var (
 	KubeConfig   string
 	Context      string
 )
+
+func getEnvOrDefault(name, defaultValue string) string {
+	if value, ok := os.LookupEnv(name); ok {
+		return value
+	}
+	return defaultValue
+}

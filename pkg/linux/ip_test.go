@@ -18,6 +18,7 @@ package linux
 
 import (
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -49,8 +50,8 @@ func TestIP2Linux(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+				assert.Equal(t, c.want, *(*uint32)(unsafe.Add(ip, 12)))
 			}
-			assert.Equal(t, c.want, ip)
 		})
 	}
 }

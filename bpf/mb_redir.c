@@ -20,12 +20,28 @@ limitations under the License.
 
 __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
 {
-    struct pair p = {
-        .dip = msg->local_ip4,
-        .dport = bpf_htons(msg->local_port),
-        .sip = msg->remote_ip4,
-        .sport = msg->remote_port >> 16,
-    };
+    struct pair p;
+    memset(&p, 0, sizeof(p));
+    p.dport = bpf_htons(msg->local_port);
+    p.sport = msg->remote_port >> 16;
+
+    switch (msg->family) {
+#if ENABLE_IPV4
+    case 2:
+        // ipv4
+        set_ipv4(p.dip, msg->local_ip4);
+        set_ipv4(p.sip, msg->remote_ip4);
+        break;
+#endif
+#if ENABLE_IPV6
+    case 10:
+        // ipv6
+        set_ipv6(p.dip, msg->local_ip6);
+        set_ipv6(p.sip, msg->remote_ip6);
+        break;
+#endif
+    }
+
     long ret = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, BPF_F_INGRESS);
     if (ret)
         debugf("redirect %d bytes with eBPF successfully", msg->size);

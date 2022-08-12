@@ -42,6 +42,11 @@ limitations under the License.
 #define DNS_CAPTURE_PORT 15053
 #endif
 
+// 127.0.0.6 (network order)
+static const __u32 envoy_ip = 127 + (6 << 24);
+// ::6 (network order)
+static const __u32 envoy_ip6[4] = {0, 0, 0, 6 << 24};
+
 #elif MESH == LINKERD
 
 #ifndef OUT_REDIRECT_PORT
@@ -60,6 +65,11 @@ limitations under the License.
 #define DNS_CAPTURE_PORT 0 // todo fix me
 #endif
 
+// 127.0.0.6 (network order)
+static const __u32 envoy_ip = 127 + (6 << 24);
+// ::6 (network order)
+static const __u32 envoy_ip6[4] = {0, 0, 0, 6 << 24};
+
 #elif MESH == KUMA
 
 #ifndef OUT_REDIRECT_PORT
@@ -77,6 +87,11 @@ limitations under the License.
 #ifndef DNS_CAPTURE_PORT
 #define DNS_CAPTURE_PORT 15053
 #endif
+
+// 127.0.0.6 (network order)
+static const __u32 envoy_ip = 127 + (6 << 24);
+// ::6 (network order)
+static const __u32 envoy_ip6[4] = {0, 0, 0, 6 << 24};
 
 #else
 #error "Mesh mode not supported yet"

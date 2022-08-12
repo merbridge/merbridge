@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/containernetworking/cni/pkg/skel"
@@ -175,7 +176,7 @@ func (s *server) listenConfig(addr net.Addr, netns string) net.ListenConfig {
 					operr = err
 					return
 				}
-				var ip uint32
+				var ip unsafe.Pointer
 				switch v := addr.(type) { // todo instead of hash
 				case *net.IPNet: // nolint: typecheck
 					ip, err = linux.IP2Linux(v.IP.String())
@@ -273,8 +274,12 @@ func skipListening(serviceMeshMode string, pid string) bool {
 		return false
 	}
 
-	conn4 := fmt.Sprintf("%s/%s/net/tcp", config.HostProc, pid)
-	return !findStr(conn4, []byte(fmt.Sprintf(": %0.8d:%0.4X %0.8d:%0.4X 0A", 0, 15001, 0, 0)))
+	if config.EnableIPV4 {
+		conn4 := fmt.Sprintf("%s/%s/net/tcp", config.HostProc, pid)
+		return !findStr(conn4, []byte(fmt.Sprintf(": %0.8d:%0.4X %0.8d:%0.4X 0A", 0, 15001, 0, 0)))
+	}
+	conn6 := fmt.Sprintf("%s/%s/net/tcp6", config.HostProc, pid)
+	return !findStr(conn6, []byte(fmt.Sprintf(": %0.32d:%0.4X %0.32d:%0.4X 0A", 0, 15001, 0, 0)))
 }
 
 func (s *server) attachTC(netns, dev string) error {
