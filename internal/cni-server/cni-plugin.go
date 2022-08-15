@@ -208,7 +208,7 @@ func (s *server) checkAndRepairPodPrograms() error {
 	for _, f := range hostProc {
 		if _, err = strconv.Atoi(f.Name()); err == nil {
 			pid := f.Name()
-			if skipListening(pid) {
+			if skipListening(s.serviceMeshMode, pid) {
 				// ignore non-injected pods
 				log.Debugf("skip listening for pid(%s)", pid)
 				continue
@@ -245,11 +245,19 @@ func (s *server) checkAndRepairPodPrograms() error {
 	return nil
 }
 
-func skipListening(pid string) bool {
+func skipListening(serviceMeshMode string, pid string) bool {
 	b, _ := os.ReadFile(fmt.Sprintf("%s/%s/comm", config.HostProc, pid))
-	comm := string(b)
-	if strings.TrimSpace(comm) != "pilot-agent" {
-		return true
+	comm := strings.TrimSpace(string(b))
+
+	switch serviceMeshMode {
+	case config.ModeKuma:
+		if comm != "kuma-dp" {
+			return true
+		}
+	default:
+		if comm != "pilot-agent" {
+			return true
+		}
 	}
 
 	findStr := func(path string, str []byte) bool {

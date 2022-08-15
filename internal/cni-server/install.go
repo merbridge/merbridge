@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -64,6 +63,7 @@ current-context: merbridge-cni-context
 )
 
 type Installer struct {
+	serviceMeshMode    string
 	kubeConfigFilepath string
 	cniConfigFilepath  string
 }
@@ -77,8 +77,10 @@ type kubeconfigFields struct {
 }
 
 // NewInstaller returns an instance of Installer with the given config
-func NewInstaller() *Installer {
-	return &Installer{}
+func NewInstaller(serviceMeshMode string) *Installer {
+	return &Installer{
+		serviceMeshMode: serviceMeshMode,
+	}
 }
 
 // Run starts the installation process, verifies the configuration, then sleeps.
@@ -98,7 +100,7 @@ func (in *Installer) Run(ctx context.Context, cniReady chan struct{}) error {
 			return err
 		}
 
-		if in.cniConfigFilepath, err = createCNIConfigFile(ctx); err != nil {
+		if in.cniConfigFilepath, err = createCNIConfigFile(ctx, in.serviceMeshMode); err != nil {
 			return err
 		}
 		if len(cniReady) == 0 {
@@ -143,7 +145,7 @@ func (in *Installer) Cleanup() error {
 		if err != nil {
 			return err
 		}
-		if err = file.AtomicWrite(in.cniConfigFilepath, cniConfig, os.FileMode(0644)); err != nil {
+		if err = file.AtomicWrite(in.cniConfigFilepath, cniConfig, os.FileMode(0o644)); err != nil {
 			return err
 		}
 	}
@@ -165,15 +167,18 @@ func (in *Installer) Cleanup() error {
 	return nil
 }
 
-func createCNIConfigFile(ctx context.Context) (string, error) {
+func createCNIConfigFile(ctx context.Context, serviceMeshMode string) (string, error) {
 	// TODO(dddddai): support ExcludeNamespaces?
 	mbCNIConfig := fmt.Sprintf(`
 	{
 		"type": "merbridge-cni",
 		"kubernetes": {
 			"kubeconfig": "/etc/cni/net.d/%s"
+		},
+		"args": {
+			"serviceMeshMode": %q
 		}
-	}`, kubeConfigFileName)
+	}`, kubeConfigFileName, serviceMeshMode)
 
 	return writeCNIConfig(ctx, []byte(mbCNIConfig))
 }
@@ -236,7 +241,7 @@ func writeCNIConfig(ctx context.Context, mbCNIConfig []byte) (string, error) {
 	}
 
 	// This section overwrites an existing plugins list entry for merbridge-cni
-	existingCNIConfig, err := ioutil.ReadFile(cniConfigFilepath)
+	existingCNIConfig, err := os.ReadFile(cniConfigFilepath)
 	if err != nil {
 		return "", err
 	}
@@ -245,7 +250,7 @@ func writeCNIConfig(ctx context.Context, mbCNIConfig []byte) (string, error) {
 		return "", err
 	}
 
-	if err = file.AtomicWrite(cniConfigFilepath, cniConfig, os.FileMode(0644)); err != nil {
+	if err = file.AtomicWrite(cniConfigFilepath, cniConfig, os.FileMode(0o644)); err != nil {
 		return "", err
 	}
 
@@ -398,7 +403,7 @@ func checkInstall(cniConfigFilepath string) error {
 
 // Read CNI config from file and return the unmarshalled JSON as a map
 func readCNIConfigMap(path string) (map[string]interface{}, error) {
-	cniConfig, err := ioutil.ReadFile(path)
+	cniConfig, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +451,7 @@ func createKubeconfigFile(saToken string) (kubeconfigFilepath string, err error)
 
 	kubeconfigFilepath = filepath.Join(config.CNIConfigDir, kubeConfigFileName)
 	log.Infof("write kubeconfig file %s with: \n%+v", kubeconfigFilepath, kcbbToPrint.String())
-	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), os.FileMode(0600)); err != nil {
+	if err = file.AtomicWrite(kubeconfigFilepath, kcbb.Bytes(), os.FileMode(0o600)); err != nil {
 		return "", err
 	}
 
@@ -458,7 +463,7 @@ func readServiceAccountToken() (string, error) {
 		return "", fmt.Errorf("service account token file %s does not exist. Is this not running within a pod?", tokenPath)
 	}
 
-	token, err := ioutil.ReadFile(tokenPath)
+	token, err := os.ReadFile(tokenPath)
 	if err != nil {
 		return "", err
 	}

@@ -47,7 +47,7 @@ var rootCmd = &cobra.Command{
 
 		cniReady := make(chan struct{}, 1)
 		if config.EnableCNI {
-			s := cniserver.NewServer(path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
+			s := cniserver.NewServer(config.Mode, path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf")
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
@@ -108,7 +108,7 @@ func init() {
 }
 
 func installCNI(ctx context.Context, cniReady chan struct{}) {
-	installer := cniserver.NewInstaller()
+	installer := cniserver.NewInstaller(config.Mode)
 	go func() {
 		if err := installer.Run(ctx, cniReady); err != nil {
 			log.Error(err)

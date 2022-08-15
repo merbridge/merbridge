@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/merbridge/merbridge/config"
+
 	kubeserverfake "github.com/DaoCloud/ckube/pkg/client/fake"
 	"istio.io/istio/cni/pkg/plugin"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +37,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-func TestIgnorePod(t *testing.T) {
+func TestIgnorePodIstio(t *testing.T) {
 	type args struct {
 		namespace string
 		name      string
@@ -121,8 +123,83 @@ func TestIgnorePod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ignorePod(tt.args.namespace, tt.args.name, tt.args.pod); got != tt.want {
-				t.Errorf("ignorePod() = %v, want %v", got, tt.want)
+			if got := ignorePodIstio(tt.args.namespace, tt.args.name, tt.args.pod); got != tt.want {
+				t.Errorf("ignorePodIstio() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIgnorePodKuma(t *testing.T) {
+	type args struct {
+		namespace string
+		name      string
+		pod       *plugin.PodInfo
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "non-injected pod",
+			args: args{
+				pod: &plugin.PodInfo{
+					Containers: []string{"foo", "bar"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "injected pod with inject-disabled label",
+			args: args{
+				pod: &plugin.PodInfo{
+					Containers: []string{"foo", "kuma-dp"},
+					Labels: map[string]string{
+						KumaInjectionLabel: "disabled",
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "injected pod without sidecar status",
+			args: args{
+				pod: &plugin.PodInfo{
+					Containers: []string{"foo", "kuma-dp"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "injected pod sidecar status annotation equal false",
+			args: args{
+				pod: &plugin.PodInfo{
+					Containers: []string{"foo", "kuma-dp"},
+					Annotations: map[string]string{
+						KumaInjectedAnnotation: "false",
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "injected pod",
+			args: args{
+				pod: &plugin.PodInfo{
+					Containers: []string{"foo", "kuma-dp"},
+					Annotations: map[string]string{
+						KumaInjectedAnnotation: "true",
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ignorePodKuma(tt.args.namespace, tt.args.name, tt.args.pod); got != tt.want {
+				t.Errorf("ignorePodKuma() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -223,14 +300,14 @@ func Test_ignore(t *testing.T) {
 	}
 
 	// gen configPath by restConfig
-	config, err := generateKubeConfig(s.GetKubeConfig())
+	kubeConfig, err := generateKubeConfig(s.GetKubeConfig())
 	if err != nil {
 		t.Fatalf("Failed to create a sample kubernetes config file. Err: %v", err)
 	}
-	defer os.RemoveAll(filepath.Dir(config))
+	defer os.RemoveAll(filepath.Dir(kubeConfig))
 
 	type args struct {
-		conf    *plugin.Config
+		conf    *Config
 		k8sArgs *plugin.K8sArgs
 	}
 	tests := []struct {
@@ -247,12 +324,15 @@ func Test_ignore(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "pod namespace within exclude namespaces",
+			name: "pod namespace within exclude namespaces - istio",
 			args: args{
-				conf: &plugin.Config{
-					Kubernetes: plugin.Kubernetes{
-						ExcludeNamespaces: []string{"ns1", "ns2"},
+				conf: &Config{
+					Config: &plugin.Config{
+						Kubernetes: plugin.Kubernetes{
+							ExcludeNamespaces: []string{"ns1", "ns2"},
+						},
 					},
+					Args: Args{ServiceMeshMode: config.ModeIstio},
 				},
 				k8sArgs: &plugin.K8sArgs{
 					K8S_POD_NAME:      "test-pod",
@@ -262,12 +342,15 @@ func Test_ignore(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "pod not found",
+			name: "pod not found - istio",
 			args: args{
-				conf: &plugin.Config{
-					Kubernetes: plugin.Kubernetes{
-						Kubeconfig: config,
+				conf: &Config{
+					Config: &plugin.Config{
+						Kubernetes: plugin.Kubernetes{
+							Kubeconfig: kubeConfig,
+						},
 					},
+					Args: Args{ServiceMeshMode: config.ModeIstio},
 				},
 				k8sArgs: &plugin.K8sArgs{
 					K8S_POD_NAME:      "p1",
@@ -277,7 +360,7 @@ func Test_ignore(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "not ignore",
+			name: "not ignore - istio",
 			fakeObjs: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
@@ -300,10 +383,89 @@ func Test_ignore(t *testing.T) {
 				},
 			},
 			args: args{
-				conf: &plugin.Config{
-					Kubernetes: plugin.Kubernetes{
-						Kubeconfig: config,
+				conf: &Config{
+					Config: &plugin.Config{
+						Kubernetes: plugin.Kubernetes{
+							Kubeconfig: kubeConfig,
+						},
 					},
+					Args: Args{ServiceMeshMode: config.ModeIstio},
+				},
+				k8sArgs: &plugin.K8sArgs{
+					K8S_POD_NAME:      "p1",
+					K8S_POD_NAMESPACE: "ns1",
+				},
+			},
+			want: false,
+		},
+		// kuma
+		{
+			name: "pod namespace within exclude namespaces - kuma",
+			args: args{
+				conf: &Config{
+					Config: &plugin.Config{
+						Kubernetes: plugin.Kubernetes{
+							ExcludeNamespaces: []string{"ns1", "ns2"},
+						},
+					},
+					Args: Args{ServiceMeshMode: config.ModeKuma},
+				},
+				k8sArgs: &plugin.K8sArgs{
+					K8S_POD_NAME:      "test-pod",
+					K8S_POD_NAMESPACE: "ns1",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "pod not found - kuma",
+			args: args{
+				conf: &Config{
+					Config: &plugin.Config{
+						Kubernetes: plugin.Kubernetes{
+							Kubeconfig: kubeConfig,
+						},
+					},
+					Args: Args{ServiceMeshMode: config.ModeKuma},
+				},
+				k8sArgs: &plugin.K8sArgs{
+					K8S_POD_NAME:      "p1",
+					K8S_POD_NAMESPACE: "ns1",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "not ignore - kuma",
+			fakeObjs: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns1",
+						Name:      "p1",
+						Annotations: map[string]string{
+							KumaInjectedAnnotation: "true",
+						},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: "kuma-dp",
+							},
+							{
+								Name: "foo",
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				conf: &Config{
+					Config: &plugin.Config{
+						Kubernetes: plugin.Kubernetes{
+							Kubeconfig: kubeConfig,
+						},
+					},
+					Args: Args{ServiceMeshMode: config.ModeKuma},
 				},
 				k8sArgs: &plugin.K8sArgs{
 					K8S_POD_NAME:      "p1",
