@@ -17,6 +17,7 @@ limitations under the License.
 package constants
 
 const (
-	CNICreatePodURL = "/v1/cni/create-pod"
-	CNIDeletePodURL = "/v1/cni/delete-pod"
+	CNICreatePodURL       = "/v1/cni/create-pod"
+	CNIDeletePodURL       = "/v1/cni/delete-pod"
+	CNITransferFdStartURL = "/v1/cni/transfer-fd"
 )

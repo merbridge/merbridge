@@ -37,6 +37,10 @@ Common labels
 app: {{ .Values.fullname }}
 {{- end }}
 
+{{- define "merbridge-fd-back.labels" -}}
+app: merbridge-fd-back
+{{- end }}
+
 {{/*
 Selector labels
 */}}

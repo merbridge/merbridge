@@ -155,10 +155,9 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 				},
 			},
 		}
-		http.DefaultClient = &httpc
 		bs, _ := json.Marshal(args)
 		body := bytes.NewReader(bs)
-		_, err = http.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
+		_, err = httpc.Post("http://merbridge-cni"+constants.CNICreatePodURL, "application/json", body)
 		if err != nil {
 			return err
 		}
@@ -188,9 +187,8 @@ func CmdDelete(args *skel.CmdArgs) (err error) {
 			},
 		},
 	}
-	http.DefaultClient = &httpc
 	bs, _ := json.Marshal(args)
 	body := bytes.NewReader(bs)
-	_, err = http.Post("http://merbridge-cni"+constants.CNIDeletePodURL, "application/json", body)
+	_, err = httpc.Post("http://merbridge-cni"+constants.CNIDeletePodURL, "application/json", body)
 	return err
 }
