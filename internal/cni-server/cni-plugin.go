@@ -154,8 +154,14 @@ func (s *server) buildListener(netns string) error {
 	if len(addrs) != 1 {
 		log.Warnf("get ip address for %s: res: %v, merbridge only support single ip address", netns, addrs)
 	}
+
 	lc := s.listenConfig(addrs[0], netns)
-	l, err := lc.Listen(context.Background(), "tcp", "0.0.0.0:39807")
+	var l net.Listener
+	if config.EnableIPV4 {
+		l, err = lc.Listen(context.Background(), "tcp", "0.0.0.0:39807")
+	} else {
+		l, err = lc.Listen(context.Background(), "tcp", "[::]:39807")
+	}
 	if err != nil {
 		return err
 	}

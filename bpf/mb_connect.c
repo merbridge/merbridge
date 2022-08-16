@@ -330,9 +330,9 @@ static inline int tcp_connect6(struct bpf_sock_addr *ctx)
 
     // get ip addresses of current pod/ns.
     struct bpf_sock_tuple tuple = {};
-    tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
-    tuple.ipv4.daddr = 0;
-    struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
+    tuple.ipv6.dport = bpf_htons(SOCK_IP_MARK_PORT);
+    set_ipv6(tuple.ipv6.daddr, ip_zero6);
+    struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv6),
                                            BPF_F_CURRENT_NETNS, 0);
     if (!s) {
         // cni mode required for ipv6
