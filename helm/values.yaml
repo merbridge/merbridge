@@ -7,6 +7,7 @@ fullname: merbridge
 namespace: istio-system
 mode: istio
 cniMode: false
+debug: false
 
 # some settings of deployment
 image:

@@ -58,6 +58,7 @@ Merbridge args command
 */}}
 {{- define "merbridge.cmd.args" -}}
 - /app/mbctl
+- --debug={{ .Values.debug }}
 - -m
 - {{ .Values.mode }}
 - --use-reconnect={{ if or (eq .Values.mode "istio") (eq .Values.mode "kuma") }}true{{ else }}false{{ end }}
