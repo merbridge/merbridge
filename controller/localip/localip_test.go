@@ -34,7 +34,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000, 15020,
+					15006, 15001, 15008, 15090, 15021, 15020, 15000,
 				},
 			},
 		},
@@ -46,7 +46,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000, 15020,
+					15006, 15001, 15008, 15090, 15021, 15020, 15000,
 					12345,
 					80,
 				},
@@ -60,7 +60,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000, 15020,
+					15006, 15001, 15008, 15090, 15021, 15020, 15000,
 				},
 				excludeOutRanges: [MaxItemLen]cidr{
 					{
@@ -82,7 +82,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000, 15020,
+					15006, 15001, 15008, 15090, 15021, 15020, 15000,
 				},
 				excludeOutRanges: [MaxItemLen]cidr{
 					{
@@ -100,7 +100,7 @@ func Test_parseConfig(t *testing.T) {
 			expect: &podConfig{
 				statusPort: 15021,
 				excludeInPorts: [MaxItemLen]uint16{
-					15090, 15006, 15001, 15000, 15020,
+					15006, 15001, 15008, 15090, 15021, 15020, 15000,
 				},
 				excludeOutRanges: [MaxItemLen]cidr{
 					{
