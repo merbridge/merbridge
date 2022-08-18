@@ -19,6 +19,7 @@ limitations under the License.
 #include <linux/bpf.h>
 #include <linux/in.h>
 
+#if ENABLE_IPV4
 __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
 {
 #if MESH != ISTIO && MESH != KUMA
@@ -28,8 +29,8 @@ __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
     if (bpf_htons(ctx->user_port) != 53) {
         return 1;
     }
-    if (!(is_port_listen_current_ns(ctx, 0, OUT_REDIRECT_PORT) &&
-          is_port_listen_udp_current_ns(ctx, 0x7f000001, DNS_CAPTURE_PORT))) {
+    if (!(is_port_listen_current_ns(ctx, ip_zero, OUT_REDIRECT_PORT) &&
+          is_port_listen_udp_current_ns(ctx, localhost, DNS_CAPTURE_PORT))) {
         // this query is not from mesh injected pod, or DNS CAPTURE not enabled.
         // we do nothing.
         return 1;
@@ -38,18 +39,57 @@ __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
     if (uid != SIDECAR_USER_ID) {
         __u64 cookie = bpf_get_socket_cookie_addr(ctx);
         // needs rewrite
-        struct origin_info origin = {.ip = ctx->user_ip4,
-                                     .port = ctx->user_port};
+        struct origin_info origin;
+        memset(&origin, 0, sizeof(origin));
+        set_ipv4(origin.ip, ctx->user_ip4);
+        origin.port = ctx->user_port;
         // save original dst
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_ANY)) {
             printk("update origin cookie failed: %d", cookie);
         }
         ctx->user_port = bpf_htons(DNS_CAPTURE_PORT);
-        ctx->user_ip4 = 0x100007f;
+        ctx->user_ip4 = localhost;
     }
     return 1;
 }
+#endif
+
+#if ENABLE_IPV6
+__section("cgroup/sendmsg6") int mb_sendmsg6(struct bpf_sock_addr *ctx)
+{
+#if MESH != ISTIO && MESH != KUMA
+    // only works on istio
+    return 1;
+#endif
+    if (bpf_htons(ctx->user_port) != 53) {
+        return 1;
+    }
+    if (!(is_port_listen_current_ns6(ctx, ip_zero6, OUT_REDIRECT_PORT) &&
+          is_port_listen_udp_current_ns6(ctx, localhost6, DNS_CAPTURE_PORT))) {
+        // this query is not from mesh injected pod, or DNS CAPTURE not enabled.
+        // we do nothing.
+        return 1;
+    }
+    __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
+    if (uid != SIDECAR_USER_ID) {
+        // needs rewrite
+        struct origin_info origin;
+        memset(&origin, 0, sizeof(origin));
+        origin.port = ctx->user_port;
+        set_ipv6(origin.ip, ctx->user_ip6);
+        // save original dst
+        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+        if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
+                                BPF_ANY)) {
+            printk("update origin cookie failed: %d", cookie);
+        }
+        ctx->user_port = bpf_htons(DNS_CAPTURE_PORT);
+        set_ipv6(ctx->user_ip6, localhost6);
+    }
+    return 1;
+}
+#endif
 
 char ____license[] __section("license") = "GPL";
 int _version __section("version") = 1;

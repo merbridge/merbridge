@@ -17,8 +17,18 @@ limitations under the License.
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/in.h>
+#include <linux/in6.h>
+#include <linux/socket.h>
 #include <linux/swab.h>
 #include <linux/types.h>
+
+#ifndef ENABLE_IPV4
+#define ENABLE_IPV4 1
+#endif
+
+#ifndef ENABLE_IPV6
+#define ENABLE_IPV6 0
+#endif
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define bpf_htons(x) __builtin_bswap16(x)
@@ -80,7 +90,7 @@ static long (*bpf_sock_hash_update)(
 static long (*bpf_msg_redirect_hash)(
     struct sk_msg_md *md, struct bpf_elf_map *map, void *key,
     __u64 flags) = (void *)BPF_FUNC_msg_redirect_hash;
-static long (*bpf_bind)(struct bpf_sock_addr *ctx, struct sockaddr_in *addr,
+static long (*bpf_bind)(struct bpf_sock_addr *ctx, struct sockaddr *addr,
                         int addr_len) = (void *)BPF_FUNC_bind;
 static long (*bpf_l4_csum_replace)(struct __sk_buff *skb, __u32 offset,
                                    __u64 from, __u64 to, __u64 flags) = (void *)
@@ -118,12 +128,28 @@ static long (*bpf_skb_store_bytes)(struct __sk_buff *skb, __u32 offset,
 
 #endif
 
+#ifndef memset
+#define memset(dst, src, len) __builtin_memset(dst, src, len)
+#endif
+
+static const __u32 ip_zero = 0;
+// 127.0.0.1 (network order)
+static const __u32 localhost = 127 + (1 << 24);
+
+static inline __u32 get_ipv4(__u32 *ip) { return ip[3]; }
+
+static inline void set_ipv4(__u32 *dst, __u32 src)
+{
+    memset(dst, 0, sizeof(__u32) * 3);
+    dst[3] = src;
+}
+
 static inline int is_port_listen_current_ns(void *ctx, __u32 ip, __u16 port)
 {
 
     struct bpf_sock_tuple tuple = {};
     tuple.ipv4.dport = bpf_htons(port);
-    tuple.ipv4.daddr = bpf_htonl(ip);
+    tuple.ipv4.daddr = ip;
     struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
                                            BPF_F_CURRENT_NETNS, 0);
     if (s) {
@@ -137,7 +163,7 @@ static inline int is_port_listen_udp_current_ns(void *ctx, __u32 ip, __u16 port)
 {
     struct bpf_sock_tuple tuple = {};
     tuple.ipv4.dport = bpf_htons(port);
-    tuple.ipv4.daddr = bpf_htonl(ip);
+    tuple.ipv4.daddr = ip;
     struct bpf_sock *s = bpf_sk_lookup_udp(ctx, &tuple, sizeof(tuple.ipv4),
                                            BPF_F_CURRENT_NETNS, 0);
     if (s) {
@@ -147,17 +173,63 @@ static inline int is_port_listen_udp_current_ns(void *ctx, __u32 ip, __u16 port)
     return 0;
 }
 
+static const __u32 ip_zero6[4] = {0, 0, 0, 0};
+// ::1 (network order)
+static const __u32 localhost6[4] = {0, 0, 0, 1 << 24};
+
+static inline void set_ipv6(__u32 *dst, __u32 *src)
+{
+    dst[0] = src[0];
+    dst[1] = src[1];
+    dst[2] = src[2];
+    dst[3] = src[3];
+}
+
+static inline int ipv6_equal(__u32 *a, __u32 *b)
+{
+    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3];
+}
+
+static inline int is_port_listen_current_ns6(void *ctx, __u32 *ip, __u16 port)
+{
+    struct bpf_sock_tuple tuple = {};
+    tuple.ipv6.dport = bpf_htons(port);
+    set_ipv6(tuple.ipv6.daddr, ip);
+    struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv6),
+                                           BPF_F_CURRENT_NETNS, 0);
+    if (s) {
+        bpf_sk_release(s);
+        return 1;
+    }
+    return 0;
+}
+
+static inline int is_port_listen_udp_current_ns6(void *ctx, __u32 *ip,
+                                                 __u16 port)
+{
+    struct bpf_sock_tuple tuple = {};
+    tuple.ipv6.dport = bpf_htons(port);
+    set_ipv6(tuple.ipv6.daddr, ip);
+    struct bpf_sock *s = bpf_sk_lookup_udp(ctx, &tuple, sizeof(tuple.ipv6),
+                                           BPF_F_CURRENT_NETNS, 0);
+    if (s) {
+        bpf_sk_release(s);
+        return 1;
+    }
+    return 0;
+}
+
 struct origin_info {
+    __u32 ip[4];
     __u32 pid;
-    __u32 ip;
     __u16 port;
     // last bit means that ip of process is detected.
     __u16 flags;
 };
 
 struct pair {
-    __u32 sip;
-    __u32 dip;
+    __u32 sip[4];
+    __u32 dip[4];
     __u16 sport;
     __u16 dport;
 };

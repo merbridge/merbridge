@@ -20,7 +20,7 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
-        version: v1.29
+        version: v1.45
     - name: install clang-format
       run: sudo apt update && sudo apt install -y clang-format
     - name: Code check
