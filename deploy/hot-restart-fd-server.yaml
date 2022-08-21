@@ -1,0 +1,58 @@
+# Source: merbridge/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: merbridge
+  namespace: istio-system
+  labels:
+    app: merbridge
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: merbridge
+  template:
+    metadata:
+      labels:
+        app: merbridge
+    spec:
+      hostNetwork: true
+      containers:
+      - image: "ghcr.io/merbridge/merbridge:latest"
+        imagePullPolicy: Always
+        name: merbridge
+        args:
+        - /app/merbridge-fd-back
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 300m
+            memory: 200Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /tmp
+            name: tmp-dir
+          - mountPath: /host/var/run
+            name: host-var-run
+            mountPropagation: Bidirectional
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: merbridge
+      serviceAccountName: merbridge
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /proc
+        name: host-proc
+      - hostPath:
+          path: /tmp
+        name: tmp-dir

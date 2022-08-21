@@ -82,6 +82,7 @@ func (s *server) CmdAdd(args *skel.CmdArgs) (err error) {
 		log.Errorf("get ns %s error", args.Netns)
 		return err
 	}
+
 	err = netns.Do(func(_ ns.NetNS) error {
 		// listen on 39807
 		if err := s.buildListener(netns.Path()); err != nil {
@@ -118,8 +119,10 @@ func (s *server) CmdDelete(args *skel.CmdArgs) (err error) {
 		return err
 	}
 	s.Lock()
+
 	delete(s.qdiscs, inode)
 	delete(s.listeners, inode)
+
 	s.Unlock()
 	m, err := ebpf.LoadPinnedMap(path.Join(s.bpfMountPath, "mark_pod_ips_map"), &ebpf.LoadPinOptions{})
 	if err != nil {
@@ -163,11 +166,39 @@ func (s *server) buildListener(netns string) error {
 		l, err = lc.Listen(context.Background(), "tcp", "[::]:39807")
 	}
 	if err != nil {
+		if config.EnableHotRestart && errors.Is(err, syscall.EADDRINUSE) {
+			if err != nil {
+				log.Errorf("get inode err: %v", err)
+			}
+			for _, tcpfn := range s.listeners {
+				tcpln := tcpfn.(*net.TCPListener)
+				f, err := tcpln.File()
+				if err != nil {
+					log.Errorf("parse back listen err: %v", err)
+					continue
+				}
+				_inode, err := getInoFromFd(f)
+				if err != nil {
+					log.Errorf("get inode err: %v", err)
+					continue
+				}
+				if inode == _inode {
+					if s.listeners == nil {
+						s.listeners = make(map[uint64]net.Listener)
+					}
+					s.listeners[inode] = tcpln
+				}
+			}
+		}
 		return err
 	}
+
 	s.Lock()
 	// keep the listener, otherwise it will be GCed
 	s.listeners[inode] = l
+	if config.EnableHotRestart && s.hotUpgradeFlag {
+		s.transferFd(l)
+	}
 	s.Unlock()
 	return nil
 }
