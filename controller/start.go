@@ -23,7 +23,6 @@ import (
 
 	"github.com/merbridge/merbridge/app/cmd/options"
 	"github.com/merbridge/merbridge/config"
-	"github.com/merbridge/merbridge/controller/localip"
 	"github.com/merbridge/merbridge/pkg/kube"
 )
 
@@ -45,7 +44,7 @@ func Run(cniReady chan struct{}, stop chan struct{}) error {
 	}
 
 	// run local ip controller
-	if err = localip.RunLocalIPController(client, cniReady, stop); err != nil {
+	if err = RunLocalPodController(client, stop); err != nil {
 		return fmt.Errorf("run local ip controller error: %v", err)
 	}
 

@@ -60,7 +60,9 @@ type server struct {
 	qdiscs map[uint64]qdisc
 	// listeners are the dummy sockets created for eBPF programs to fetch the current pod ip
 	// key: netns(inode), value: net.Listener
-	listeners      map[uint64]net.Listener
+	listeners map[uint64]net.Listener
+
+	cniReady       chan struct{}
 	stop           chan struct{}
 	hotUpgradeFlag bool
 	wg             sync.WaitGroup
@@ -69,7 +71,7 @@ type server struct {
 // NewServer returns a new CNI Server.
 // the path this the unix path to listen.
 
-func NewServer(serviceMeshMode string, unixSockPath string, bpfMountPath string, stop chan struct{}) Server {
+func NewServer(serviceMeshMode string, unixSockPath string, bpfMountPath string, cniReady, stop chan struct{}) Server {
 	if unixSockPath == "" {
 		unixSockPath = path.Join(config.HostVarRun, "merbridge-cni.sock")
 	}
@@ -82,6 +84,7 @@ func NewServer(serviceMeshMode string, unixSockPath string, bpfMountPath string,
 		bpfMountPath:    bpfMountPath,
 		qdiscs:          make(map[uint64]qdisc),
 		listeners:       make(map[uint64]net.Listener),
+		cniReady:        cniReady,
 		stop:            stop,
 		hotUpgradeFlag:  false,
 	}
@@ -98,10 +101,6 @@ func (s *server) Start() error {
 
 	if config.EnableHotRestart {
 		s.transferFdBack()
-	}
-
-	if err = s.checkAndRepairPodPrograms(); err != nil {
-		log.Errorf("Failed to check existing pods: %v", err)
 	}
 
 	r := mux.NewRouter()
@@ -135,7 +134,36 @@ func (s *server) Start() error {
 		}
 		_ = ss.Shutdown(context.Background())
 	}()
+
+	s.installCNI()
+	// wait for cni to be ready
+	<-s.cniReady
+	if err = s.checkAndRepairPodPrograms(); err != nil {
+		log.Errorf("Failed to check existing pods: %v", err)
+	}
 	return nil
+}
+
+func (s *server) installCNI() {
+	installer := NewInstaller(config.Mode)
+	go func() {
+		if err := installer.Run(context.TODO(), s.cniReady); err != nil {
+			log.Error(err)
+			close(s.cniReady)
+		}
+		if err := installer.Cleanup(); err != nil {
+			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
+		}
+	}()
+
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGABRT)
+		<-ch
+		if err := installer.Cleanup(); err != nil {
+			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
+		}
+	}()
 }
 
 func (s *server) PutFd(ld net.Listener, unixconn net.Conn) {
