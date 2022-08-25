@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package localip
+package controller
 
 import (
 	"fmt"
@@ -37,24 +37,20 @@ import (
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}, stop chan struct{}) error {
+func RunLocalPodController(client kubernetes.Interface, stop chan struct{}) error {
 	var err error
 
 	if err = ebpfs.InitLoadPinnedMap(); err != nil {
 		return fmt.Errorf("failed to load ebpf maps: %v", err)
 	}
 
-	w := pods.NewWatcher(createLocalIPController(client))
+	w := pods.NewWatcher(createLocalPodController(client))
 
 	if err = w.Start(); err != nil {
 		return fmt.Errorf("start watcher failed: %v", err)
 	}
 
 	log.Info("Pod Watcher Ready")
-	if config.EnableCNI {
-		// wait for cni ready
-		<-cniReady
-	}
 	if err = ebpfs.AttachMBProgs(); err != nil {
 		return fmt.Errorf("failed to attach ebpf programs: %v", err)
 	}
@@ -74,7 +70,7 @@ func RunLocalIPController(client kubernetes.Interface, cniReady chan struct{}, s
 	return nil
 }
 
-func createLocalIPController(client kubernetes.Interface) pods.Watcher {
+func createLocalPodController(client kubernetes.Interface) pods.Watcher {
 	localName, err := os.Hostname()
 	if err != nil {
 		panic(err)

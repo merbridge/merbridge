@@ -17,14 +17,11 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"path"
 	"runtime"
 	"strings"
-	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -41,19 +38,19 @@ var rootCmd = &cobra.Command{
 	Short: "Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.",
 	Long:  `Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		stop := make(chan struct{}, 1)
 		if err := ebpfs.LoadMBProgs(config.Mode, config.UseReconnect, config.Debug); err != nil {
 			return fmt.Errorf("failed to load ebpf programs: %v", err)
 		}
 
+		stop := make(chan struct{}, 1)
 		cniReady := make(chan struct{}, 1)
 		if config.EnableCNI {
-			s := cniserver.NewServer(config.Mode, path.Join(config.HostVarRun, "merbridge-cni.sock"), "/sys/fs/bpf", stop)
+			s := cniserver.NewServer(config.Mode, path.Join(config.HostVarRun, "merbridge-cni.sock"),
+				"/sys/fs/bpf", cniReady, stop)
 			if err := s.Start(); err != nil {
 				log.Fatal(err)
 				return err
 			}
-			installCNI(cmd.Context(), cniReady)
 		}
 		// todo: wait for stop
 		if err := controller.Run(cniReady, stop); err != nil {
@@ -106,26 +103,4 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&config.KubeConfig, "kubeconfig", "", "Kubernetes configuration file")
 	rootCmd.PersistentFlags().StringVar(&config.Context, "kubecontext", "", "The name of the kube config context to use")
 	rootCmd.PersistentFlags().BoolVar(&config.EnableHotRestart, "enable-hot-restart", false, "enable hot restart")
-}
-
-func installCNI(ctx context.Context, cniReady chan struct{}) {
-	installer := cniserver.NewInstaller(config.Mode)
-	go func() {
-		if err := installer.Run(ctx, cniReady); err != nil {
-			log.Error(err)
-			cniReady <- struct{}{}
-		}
-		if err := installer.Cleanup(); err != nil {
-			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
-		}
-	}()
-
-	go func() {
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGABRT)
-		<-ch
-		if err := installer.Cleanup(); err != nil {
-			log.Errorf("Failed to clean up Merbridge CNI: %v", err)
-		}
-	}()
 }
