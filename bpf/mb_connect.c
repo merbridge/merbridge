@@ -91,7 +91,6 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
         debugf("get current pod ip error");
     }
     __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    __u32 pid;
     __u32 dst_ip = ctx->user_ip4;
     if (uid != SIDECAR_USER_ID) {
         if ((dst_ip & 0xff) == 0x7f) {
@@ -102,18 +101,12 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
         // app call others
         debugf("call from user container: cookie: %d, ip: %pI4, port: %d",
                cookie, &dst_ip, bpf_htons(ctx->user_port));
-        // u64 bpf_get_current_pid_tgid(void)
-        // Return A 64-bit integer containing the current tgid and
-        //                 pid, and created as such: current_task->tgid << 32
-        //                | current_task->pid.
-        // pid may be thread id, we should use tgid
-        pid = bpf_get_current_pid_tgid() >> 32; // tgid
+
         // we need redirect it to envoy.
         struct origin_info origin;
         memset(&origin, 0, sizeof(origin));
         set_ipv4(origin.ip, dst_ip);
         origin.port = ctx->user_port;
-        origin.pid = pid;
         origin.flags = 1;
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_ANY)) {
@@ -189,10 +182,7 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
         }
         ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
-        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
         // from envoy to others
-        debugf("call from sidecar container: cookie: %d, ip: %pI4, port: %d",
-               cookie, &dst_ip, bpf_htons(ctx->user_port));
         __u32 _dst_ip[4];
         set_ipv4(_dst_ip, dst_ip);
         struct pod_config *pod = bpf_map_lookup_elem(&local_pod_ips, _dst_ip);
@@ -201,17 +191,15 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
             debugf("dest ip: %pI4 not in this node, bypass", &dst_ip);
             return 1;
         }
-        pid = bpf_get_current_pid_tgid() >> 32;
+
         // dst ip is in this node, but not the current pod,
         // it is envoy to envoy connecting.
         struct origin_info origin;
         memset(&origin, 0, sizeof(origin));
         set_ipv4(origin.ip, dst_ip);
         origin.port = ctx->user_port;
-        origin.pid = pid;
 
         if (curr_pod_ip) {
-            origin.flags |= 1;
             if (curr_pod_ip != dst_ip) {
                 // call other pod, need redirect port.
                 int exclude = 0;
@@ -234,8 +222,17 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
                 }
                 ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
             }
+            origin.flags |= 1;
         } else {
             // can not get current pod ip, we use the lagecy mode.
+
+            // u64 bpf_get_current_pid_tgid(void)
+            // Return A 64-bit integer containing the current tgid and
+            //                 pid, and created as such: current_task->tgid <<
+            //                 32
+            //                | current_task->pid.
+            // pid may be thread id, we should use tgid
+            __u32 pid = bpf_get_current_pid_tgid() >> 32; // tgid
             void *curr_ip = bpf_map_lookup_elem(&process_ip, &pid);
             if (curr_ip) {
                 // envoy to other envoy
@@ -248,6 +245,7 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
                 // envoy to app, no rewrite
             } else {
                 origin.flags = 0;
+                origin.pid = pid;
 #ifdef USE_RECONNECT
                 // envoy to envoy
                 // try redirect to 15006
@@ -260,6 +258,9 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
 #endif
             }
         }
+        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+        debugf("call from sidecar container: cookie: %d, ip: %pI4, port: %d",
+               cookie, &dst_ip, bpf_htons(ctx->user_port));
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_NOEXIST)) {
             printk("update cookie origin failed");
@@ -388,10 +389,7 @@ static inline int tcp_connect6(struct bpf_sock_addr *ctx)
         set_ipv6(ctx->user_ip6, localhost6);
         ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
     } else {
-        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
         // from envoy to others
-        debugf("call from sidecar container: cookie: %d, ip: %pI6c, port: %d",
-               cookie, dst_ip, bpf_htons(ctx->user_port));
         if (!bpf_map_lookup_elem(&local_pod_ips, dst_ip)) {
             // dst ip is not in this node, bypass
             debugf("dest ip: %pI6c not in this node, bypass", dst_ip);
@@ -408,6 +406,9 @@ static inline int tcp_connect6(struct bpf_sock_addr *ctx)
                    ctx->user_port, bpf_htons(IN_REDIRECT_PORT));
             ctx->user_port = bpf_htons(IN_REDIRECT_PORT);
         }
+        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+        debugf("call from sidecar container: cookie: %d, ip: %pI6c, port: %d",
+               cookie, dst_ip, bpf_htons(ctx->user_port));
         if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
                                 BPF_NOEXIST)) {
             printk("update cookie origin failed");
