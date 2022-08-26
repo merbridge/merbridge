@@ -141,7 +141,7 @@ func (s *server) buildListener(netns string) error {
 	var addrs []net.Addr
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
-		if iface.Name == "lo" {
+		if (iface.Flags&net.FlagLoopback) != 0 || (iface.Flags&net.FlagUp) == 0 {
 			continue
 		}
 		ifAddrs, err := iface.Addrs()
