@@ -19,7 +19,6 @@ package cniserver
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -71,7 +70,7 @@ func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *server) TransferFd(w http.ResponseWriter, req *http.Request) {
-	_, err := ioutil.ReadAll(req.Body)
+	_, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(500)
 		_, _ = w.Write([]byte(err.Error()))
