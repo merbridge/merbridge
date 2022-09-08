@@ -1,26 +1,24 @@
 module github.com/merbridge/merbridge
 
-go 1.17
-
-require (
-	github.com/cilium/ebpf v0.8.1
-	github.com/containernetworking/plugins v1.1.1
-	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.5.0
-	github.com/stretchr/testify v1.8.0
-	k8s.io/api v0.23.6
-	k8s.io/client-go v0.23.6
-)
+go 1.19
 
 require (
 	github.com/DaoCloud/ckube v1.0.11
+	github.com/cilium/ebpf v0.9.1
 	github.com/containernetworking/cni v1.1.0
+	github.com/containernetworking/plugins v1.1.1
+	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/gorilla/mux v1.8.0
 	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.9.0
+	github.com/spf13/cobra v1.5.0
+	github.com/stretchr/testify v1.8.0
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	istio.io/api v0.0.0-20220415145822-bfb8bb7bb3e2
 	istio.io/istio v0.0.0-20220418011539-64c28815c8a3
+	k8s.io/api v0.23.6
 	k8s.io/apimachinery v0.23.6
+	k8s.io/client-go v0.23.6
 )
 
 require (
@@ -62,7 +60,6 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/florianl/go-nflog/v2 v2.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
