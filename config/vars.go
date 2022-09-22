@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	ModeIstio   = "istio"
-	ModeLinkerd = "linkerd"
-	ModeKuma    = "kuma"
-	LocalPodIps = "/sys/fs/bpf/tc/globals/local_pod_ips"
+	ModeIstio       = "istio"
+	ModeLinkerd     = "linkerd"
+	ModeKuma        = "kuma"
+	LocalPodIps     = "/sys/fs/bpf/local_pod_ips"
+	PairOriginalDst = "/sys/fs/bpf/pair_original_dst"
 )
 
 var (

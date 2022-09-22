@@ -24,17 +24,32 @@ import (
 	"github.com/merbridge/merbridge/config"
 )
 
-var EbpfLoadPinnedMap *ebpf.Map
+var localPodIpsMap *ebpf.Map
+var pairOriginIpsMap *ebpf.Map
 
 func InitLoadPinnedMap() error {
 	var err error
-	EbpfLoadPinnedMap, err = ebpf.LoadPinnedMap(config.LocalPodIps, &ebpf.LoadPinOptions{})
+	localPodIpsMap, err = ebpf.LoadPinnedMap(config.LocalPodIps, &ebpf.LoadPinOptions{})
+	if err != nil {
+		return fmt.Errorf("load map error: %v", err)
+	}
+	pairOriginIpsMap, err = ebpf.LoadPinnedMap(config.PairOriginalDst, &ebpf.LoadPinOptions{})
 	if err != nil {
 		return fmt.Errorf("load map error: %v", err)
 	}
 	return nil
 }
 
-func GetPinnedMap() *ebpf.Map {
-	return EbpfLoadPinnedMap
+func GetLocalIPMap() *ebpf.Map {
+	if localPodIpsMap == nil {
+		InitLoadPinnedMap()
+	}
+	return localPodIpsMap
+}
+
+func GetPairOriginalMap() *ebpf.Map {
+	if localPodIpsMap == nil {
+		InitLoadPinnedMap()
+	}
+	return pairOriginIpsMap
 }

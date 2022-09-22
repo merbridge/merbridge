@@ -25,7 +25,6 @@ import (
 	"hash/fnv"
 	"net"
 	"os"
-	"os/exec"
 	"path"
 	"runtime/debug"
 	"strconv"
@@ -37,11 +36,14 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/florianl/go-tc"
+	"github.com/florianl/go-tc/core"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"istio.io/istio/cni/pkg/plugin"
 
 	"github.com/merbridge/merbridge/config"
+	"github.com/merbridge/merbridge/internal/ebpfs"
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
@@ -267,7 +269,11 @@ func (s *server) checkAndRepairPodPrograms() error {
 				ifaces, _ := net.Interfaces()
 				for _, iface := range ifaces {
 					if (iface.Flags&net.FlagLoopback) == 0 && (iface.Flags&net.FlagUp) != 0 {
-						return s.attachTC(netns.Path(), iface.Name)
+						err := s.attachTC(netns.Path(), iface.Name)
+						if err != nil {
+							log.Errorf("attach tc for %s of %s error: %v", iface.Name, netns.Path(), err)
+						}
+						return nil
 					}
 				}
 				return fmt.Errorf("device not found for pid(%s)", pid)
@@ -319,38 +325,126 @@ func skipListening(serviceMeshMode string, pid string) bool {
 	return !findStr(conn6, []byte(fmt.Sprintf(": %0.32d:%0.4X %0.32d:%0.4X 0A", 0, 15001, 0, 0)))
 }
 
+func uint32Ptr(v uint32) *uint32 {
+	return &v
+}
+
+func stringPtr(v string) *string {
+	return &v
+}
+
 func (s *server) attachTC(netns, dev string) error {
+	// already in netns
 	inode, err := linux.GetFileInode(netns)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("tc qdisc add dev %s clsact", dev))
-	err = cmd.Run()
-	hasCls := false
-	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-		log.Errorf("Add clsact to %s failed: unexpected exit code: %d, err: %v", dev, code, err)
-		// TODO(dddddai): check if clsact exists
-		hasCls = true
+	iface, err := net.InterfaceByName(dev)
+	if err != nil {
+		log.Errorf("get iface error: %v", err)
+		return err
+	}
+	rtnl, err := tc.Open(&tc.Config{})
+	if err != nil {
+		log.Errorf("open rtnl error: %v", err)
+		return err
+	}
+	defer func() {
+		if err := rtnl.Close(); err != nil {
+			log.Errorf("could not close rtnetlink socket: %v\n", err)
+		}
+	}()
+	qdiscs, err := rtnl.Qdisc().Get()
+	if err != nil {
+		log.Errorf("get qdisc error: %v", err)
+		return err
+	}
+	find := false
+	for _, qdisc := range qdiscs {
+		if qdisc.Kind == "clsact" && qdisc.Ifindex == uint32(iface.Index) {
+			find = true
+			break
+		}
+	}
+	if !find {
+		// init clasact if not exists
+		err := rtnl.Qdisc().Add(&tc.Object{
+			tc.Msg{
+				Family:  unix.AF_UNSPEC,
+				Ifindex: uint32(iface.Index),
+				Handle:  core.BuildHandle(0xFFFF, 0x0000),
+				Parent:  tc.HandleIngress,
+			},
+			tc.Attribute{
+				Kind: "clsact",
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	ing := ebpfs.GetTCIngressProg()
+	if ing == nil {
+		return fmt.Errorf("can not get ingress prog")
 	}
 
-	obj := "bpf/mb_tc.o"
-
-	cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter add prio 66 dev %s ingress bpf da obj %s sec classifier_ingress", dev, obj))
-	err = cmd.Run()
-	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-		return fmt.Errorf("failed to attach tc(ingress) to %s, unexpected exit code: %d, err: %v", dev, code, err)
+	filter := tc.Object{
+		Msg: tc.Msg{
+			Family:  unix.AF_UNSPEC,
+			Ifindex: uint32(iface.Index),
+			// Handle:  0,
+			Parent: 0xFFFFFFF2,
+			Info: core.BuildHandle(
+				66,     // prio
+				0x0300, // protocol
+			),
+		},
+		Attribute: tc.Attribute{
+			Kind: "bpf",
+			BPF: &tc.Bpf{
+				FD:    uint32Ptr(uint32(ing.FD())),
+				Name:  stringPtr("mb_tc_ingress"),
+				Flags: uint32Ptr(0x1),
+			},
+		},
 	}
-	cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter add prio 66 dev %s egress bpf da obj %s sec classifier_egress", dev, obj))
-	err = cmd.Run()
-	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-		return fmt.Errorf("failed to attach tc(egress) to %s, unexpected exit code: %d, err: %v", dev, code, err)
+	if err := rtnl.Filter().Add(&filter); err != nil {
+		return err
+	}
+	egress := ebpfs.GetTCEgressProg()
+	if ing == nil {
+		return fmt.Errorf("can not get ingress prog")
+	}
+
+	filter = tc.Object{
+		Msg: tc.Msg{
+			Family:  unix.AF_UNSPEC,
+			Ifindex: uint32(iface.Index),
+			// Handle:  0,
+			Parent: 0xFFFFFFF3,
+			Info: core.BuildHandle(
+				66,     // prio
+				0x0300, // protocol
+			),
+		},
+		Attribute: tc.Attribute{
+			Kind: "bpf",
+			BPF: &tc.Bpf{
+				FD:    uint32Ptr(uint32(egress.FD())),
+				Name:  stringPtr("mb_tc_egress"),
+				Flags: uint32Ptr(0x1),
+			},
+		},
+	}
+	if err := rtnl.Filter().Add(&filter); err != nil {
+		return err
 	}
 
 	s.Lock()
 	s.qdiscs[inode] = qdisc{
 		netns:     netns,
 		device:    dev,
-		hasClsact: hasCls,
+		hasClsact: !find,
 	}
 	s.Unlock()
 	return nil
@@ -366,25 +460,62 @@ func (s *server) cleanUpTC() {
 			continue
 		}
 		if err = netns.Do(func(_ ns.NetNS) error {
-			if !q.hasClsact {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("tc qdisc delete dev %s clsact", q.device))
-				err := cmd.Run()
-				if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-					return fmt.Errorf("failed to delete clsact from %s, unexpected exit code: %d, err: %v", q.device, code, err)
+			iface, err := net.InterfaceByName(q.device)
+			if err != nil {
+				return err
+			}
+			rtnl, err := tc.Open(&tc.Config{})
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := rtnl.Close(); err != nil {
+					log.Errorf("could not close rtnetlink socket: %v\n", err)
 				}
-			} else {
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("tc filter delete dev %s egress prio 66", q.device))
-				err := cmd.Run()
-				if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-					return fmt.Errorf("failed to delete egress filter from %s, unexpected exit code: %d, err: %v", q.device, code, err)
-				}
-				cmd = exec.Command("sh", "-c", fmt.Sprintf("tc filter delete dev %s ingress prio 66", q.device))
-				err = cmd.Run()
-				if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
-					return fmt.Errorf("failed to delete ingress filter from %s, unexpected exit code: %d, err: %v", q.device, code, err)
+			}()
+			if q.hasClsact {
+				err := rtnl.Qdisc().Delete(&tc.Object{
+					tc.Msg{
+						Family:  unix.AF_UNSPEC,
+						Ifindex: uint32(iface.Index),
+						Handle:  core.BuildHandle(0xFFFF, 0x0000),
+						Parent:  tc.HandleIngress,
+					},
+					tc.Attribute{
+						Kind: "clsact",
+					},
+				})
+				if err != nil {
+					log.Errorf("error remove clsact: ns: %s, dev: %s, err: %v", q.netns, q.device, err)
+					// if remove clsact error, rollback to remove filter
+				} else {
+					return nil
 				}
 			}
-			return nil
+			filter := tc.Object{
+				Msg: tc.Msg{
+					Family:  unix.AF_UNSPEC,
+					Ifindex: uint32(iface.Index),
+					Parent:  0xFFFFFFF2,
+					Info: core.BuildHandle(
+						66,     // prio
+						0x0300, // protocol
+					),
+				},
+			}
+			rtnl.Filter().Delete(&filter)
+			filter = tc.Object{
+				Msg: tc.Msg{
+					Family:  unix.AF_UNSPEC,
+					Ifindex: uint32(iface.Index),
+					Parent:  0xFFFFFFF3,
+					Info: core.BuildHandle(
+						66,     // prio
+						0x0300, // protocol
+					),
+				},
+			}
+			return rtnl.Filter().Delete(&filter)
 		}); err != nil {
 			log.Errorf("Failed to clean up tc for %s, error: %v", q.netns, err)
 		}

@@ -127,7 +127,7 @@ func addFunc(obj interface{}) {
 	} else {
 		parsePodConfigFromAnnotations(pod.Annotations, &p)
 	}
-	err := ebpfs.GetPinnedMap().Update(_ip, &p, ebpf.UpdateAny)
+	err := ebpfs.GetLocalIPMap().Update(_ip, &p, ebpf.UpdateAny)
 	if err != nil {
 		log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
 	}
@@ -302,6 +302,6 @@ func deleteFunc(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
 		log.Debugf("got pod delete %s/%s", pod.Namespace, pod.Name)
 		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
-		_ = ebpfs.GetPinnedMap().Delete(_ip)
+		_ = ebpfs.GetLocalIPMap().Delete(_ip)
 	}
 }

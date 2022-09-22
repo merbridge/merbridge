@@ -33,7 +33,7 @@ struct bpf_elf_map __section("maps") local_pod_ips = {
     .size_key = sizeof(__u32) * 4,
     .size_value = sizeof(struct pod_config),
     .max_elem = 1024,
-    .pinning = PIN_GLOBAL_NS,
+    // .pinning = PIN_GLOBAL_NS,
 };
 
 // process_ip stores envoy's ip address.
@@ -49,7 +49,7 @@ struct bpf_elf_map __section("maps") pair_original_dst = {
     .size_key = sizeof(struct pair),
     .size_value = sizeof(struct origin_info),
     .max_elem = 65535,
-    .pinning = PIN_GLOBAL_NS,
+    // .pinning = PIN_GLOBAL_NS,
 };
 
 struct bpf_elf_map __section("maps") sock_pair_map = {
