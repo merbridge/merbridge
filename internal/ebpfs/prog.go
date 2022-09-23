@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/cilium/ebpf"
+	log "github.com/sirupsen/logrus"
 )
 
 func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
@@ -67,5 +70,54 @@ func UnLoadMBProgs() error {
 	if code := cmd.ProcessState.ExitCode(); code != 0 || err != nil {
 		return fmt.Errorf("unload unexpected exit code: %d, err: %v", code, err)
 	}
+	return nil
+}
+
+var (
+	ingress *ebpf.Program
+	egress  *ebpf.Program
+)
+
+func GetTCIngressProg() *ebpf.Program {
+	if ingress == nil {
+		err := initTCProgs()
+		if err != nil {
+			log.Errorf("init tc prog filed: %v", err)
+		}
+	}
+	return ingress
+}
+
+func GetTCEgressProg() *ebpf.Program {
+	if egress == nil {
+		err := initTCProgs()
+		if err != nil {
+			log.Errorf("init tc prog filed: %v", err)
+		}
+	}
+	return egress
+}
+
+func initTCProgs() error {
+	coll, err := ebpf.LoadCollectionSpec("bpf/mb_tc.o")
+	if err != nil {
+		return err
+	}
+	type progs struct {
+		Ingress *ebpf.Program `ebpf:"mb_tc_ingress"`
+		Egress  *ebpf.Program `ebpf:"mb_tc_egress"`
+	}
+	ps := progs{}
+	err = coll.LoadAndAssign(&ps, &ebpf.CollectionOptions{
+		MapReplacements: map[string]*ebpf.Map{
+			"local_pod_ips":     GetLocalIPMap(),
+			"pair_original_dst": GetPairOriginalMap(),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	ingress = ps.Ingress
+	egress = ps.Egress
 	return nil
 }

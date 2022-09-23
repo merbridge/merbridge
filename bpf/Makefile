@@ -2,7 +2,6 @@
 CC=clang
 CFLAGS=-O2 -g  -Wall -target bpf -I/usr/include/$(shell uname -m)-linux-gnu
 PROG_MOUNT_PATH=/sys/fs/bpf
-TC_PINNING_PATH=/sys/fs/bpf/tc/globals
 
 MACROS:=
 DEBUG ?=
@@ -92,7 +91,7 @@ load-map-cookie_original_dst:
 	[ -f $(PROG_MOUNT_PATH)/cookie_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cookie_original_dst type lru_hash key 8 value 24 entries 65535 name cookie_original_dst
 
 load-map-local_pod_ips:
-	[ -f $(TC_PINNING_PATH)/local_pod_ips ] || sudo bpftool map create $(TC_PINNING_PATH)/local_pod_ips type hash key 16 value 244 entries 1024 name local_pod_ips
+	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 16 value 244 entries 1024 name local_pod_ips
 
 load-map-process_ip:
 	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
@@ -101,7 +100,7 @@ load-map-mark_pod_ips_map:
 	[ -f $(PROG_MOUNT_PATH)/mark_pod_ips_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/mark_pod_ips_map type hash key 4 value 16 entries 65535 name mark_pod_ips_map
 
 load-map-pair_original_dst:
-	[ -f $(TC_PINNING_PATH)/pair_original_dst ] || sudo bpftool map create $(TC_PINNING_PATH)/pair_original_dst type lru_hash key 36 value 24 entries 65535 name pair_original_dst
+	[ -f $(PROG_MOUNT_PATH)/pair_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/pair_original_dst type lru_hash key 36 value 24 entries 65535 name pair_original_dst
 
 load-map-sock_pair_map:
 	[ -f $(PROG_MOUNT_PATH)/sock_pair_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/sock_pair_map type sockhash key 36 value 4 entries 65535 name sock_pair_map
@@ -110,15 +109,15 @@ load-map-sock_pair_map:
 clean-maps:
 	sudo rm -f \
 		$(PROG_MOUNT_PATH)/sock_pair_map \
-		$(TC_PINNING_PATH)/pair_original_dst \
+		$(PROG_MOUNT_PATH)/pair_original_dst \
 		$(PROG_MOUNT_PATH)/process_ip \
-		$(TC_PINNING_PATH)/local_pod_ips \
+		$(PROG_MOUNT_PATH)/local_pod_ips \
 		$(PROG_MOUNT_PATH)/cookie_original_dst \
 		$(PROG_MOUNT_PATH)/mark_pod_ips_map
 
 load-getsock: load-map-pair_original_dst
 	sudo bpftool -m prog load mb_get_sockopts.o $(PROG_MOUNT_PATH)/get_sockopts \
-		map name pair_original_dst pinned $(TC_PINNING_PATH)/pair_original_dst
+		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst
 
 attach-getsock:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) getsockopt pinned $(PROG_MOUNT_PATH)/get_sockopts
@@ -141,7 +140,7 @@ clean-redir:
 load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-mark_pod_ips_map
 	sudo bpftool -m prog loadall mb_connect.o $(PROG_MOUNT_PATH)/connect \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
-		map name local_pod_ips pinned $(TC_PINNING_PATH)/local_pod_ips \
+		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
 		map name mark_pod_ips_map pinned $(PROG_MOUNT_PATH)/mark_pod_ips_map \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip
 
@@ -166,7 +165,7 @@ load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_ori
 	sudo bpftool -m prog load mb_sockops.o $(PROG_MOUNT_PATH)/sockops \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
-		map name pair_original_dst pinned $(TC_PINNING_PATH)/pair_original_dst \
+		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst \
 		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map
 
 attach-sockops:
