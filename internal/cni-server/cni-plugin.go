@@ -369,13 +369,13 @@ func (s *server) attachTC(netns, dev string) error {
 	if !find {
 		// init clasact if not exists
 		err := rtnl.Qdisc().Add(&tc.Object{
-			tc.Msg{
+			Msg: tc.Msg{
 				Family:  unix.AF_UNSPEC,
 				Ifindex: uint32(iface.Index),
 				Handle:  core.BuildHandle(0xFFFF, 0x0000),
 				Parent:  tc.HandleIngress,
 			},
-			tc.Attribute{
+			Attribute: tc.Attribute{
 				Kind: "clsact",
 			},
 		})
@@ -475,13 +475,13 @@ func (s *server) cleanUpTC() {
 			}()
 			if q.hasClsact {
 				err := rtnl.Qdisc().Delete(&tc.Object{
-					tc.Msg{
+					Msg: tc.Msg{
 						Family:  unix.AF_UNSPEC,
 						Ifindex: uint32(iface.Index),
 						Handle:  core.BuildHandle(0xFFFF, 0x0000),
 						Parent:  tc.HandleIngress,
 					},
-					tc.Attribute{
+					Attribute: tc.Attribute{
 						Kind: "clsact",
 					},
 				})
@@ -503,7 +503,7 @@ func (s *server) cleanUpTC() {
 					),
 				},
 			}
-			rtnl.Filter().Delete(&filter)
+			_ = rtnl.Filter().Delete(&filter)
 			filter = tc.Object{
 				Msg: tc.Msg{
 					Family:  unix.AF_UNSPEC,

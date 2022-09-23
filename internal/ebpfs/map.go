@@ -24,8 +24,10 @@ import (
 	"github.com/merbridge/merbridge/config"
 )
 
-var localPodIpsMap *ebpf.Map
-var pairOriginIpsMap *ebpf.Map
+var (
+	localPodIpsMap   *ebpf.Map
+	pairOriginIpsMap *ebpf.Map
+)
 
 func InitLoadPinnedMap() error {
 	var err error
@@ -42,14 +44,14 @@ func InitLoadPinnedMap() error {
 
 func GetLocalIPMap() *ebpf.Map {
 	if localPodIpsMap == nil {
-		InitLoadPinnedMap()
+		_ = InitLoadPinnedMap()
 	}
 	return localPodIpsMap
 }
 
 func GetPairOriginalMap() *ebpf.Map {
 	if localPodIpsMap == nil {
-		InitLoadPinnedMap()
+		_ = InitLoadPinnedMap()
 	}
 	return pairOriginIpsMap
 }

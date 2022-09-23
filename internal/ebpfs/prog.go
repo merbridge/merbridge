@@ -73,8 +73,10 @@ func UnLoadMBProgs() error {
 	return nil
 }
 
-var ingress *ebpf.Program
-var egress *ebpf.Program
+var (
+	ingress *ebpf.Program
+	egress  *ebpf.Program
+)
 
 func GetTCIngressProg() *ebpf.Program {
 	if ingress == nil {
@@ -101,21 +103,17 @@ func initTCProgs() error {
 	if err != nil {
 		return err
 	}
-	log.Infof("map1 %+v", GetLocalIPMap())
-	err = coll.RewriteMaps(map[string]*ebpf.Map{
-		"local_pod_ips":     GetLocalIPMap(),
-		"pair_original_dst": GetPairOriginalMap(),
-	})
-	if err != nil {
-		return err
-	}
-
 	type progs struct {
 		Ingress *ebpf.Program `ebpf:"mb_tc_ingress"`
 		Egress  *ebpf.Program `ebpf:"mb_tc_egress"`
 	}
 	ps := progs{}
-	err = coll.LoadAndAssign(&ps, &ebpf.CollectionOptions{})
+	err = coll.LoadAndAssign(&ps, &ebpf.CollectionOptions{
+		MapReplacements: map[string]*ebpf.Map{
+			"local_pod_ips":     GetLocalIPMap(),
+			"pair_original_dst": GetPairOriginalMap(),
+		},
+	})
 	if err != nil {
 		return err
 	}
