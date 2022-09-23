@@ -393,7 +393,7 @@ func (s *server) attachTC(netns, dev string) error {
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(iface.Index),
 			// Handle:  0,
-			Parent: 0xFFFFFFF2,
+			Parent: 0xFFFFFFF2, // ingress
 			Info: core.BuildHandle(
 				66,     // prio
 				0x0300, // protocol
@@ -421,7 +421,7 @@ func (s *server) attachTC(netns, dev string) error {
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(iface.Index),
 			// Handle:  0,
-			Parent: 0xFFFFFFF3,
+			Parent: 0xFFFFFFF3, // egress
 			Info: core.BuildHandle(
 				66,     // prio
 				0x0300, // protocol
