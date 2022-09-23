@@ -2,7 +2,6 @@
 CC=clang
 CFLAGS=-O2 -g  -Wall -target bpf -I/usr/include/$(shell uname -m)-linux-gnu
 PROG_MOUNT_PATH=/sys/fs/bpf
-TC_PINNING_PATH=/sys/fs/bpf/tc/globals
 
 MACROS:=
 DEBUG ?=

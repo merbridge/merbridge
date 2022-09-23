@@ -273,7 +273,7 @@ func (s *server) checkAndRepairPodPrograms() error {
 						if err != nil {
 							log.Errorf("attach tc for %s of %s error: %v", iface.Name, netns.Path(), err)
 						}
-						return nil
+						return err
 					}
 				}
 				return fmt.Errorf("device not found for pid(%s)", pid)
