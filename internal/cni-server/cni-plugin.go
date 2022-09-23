@@ -48,9 +48,9 @@ import (
 )
 
 type qdisc struct {
-	netns     string
-	device    string
-	hasClsact bool
+	netns         string
+	device        string
+	managedClsact bool
 }
 
 func getMarkKeyOfNetns(netns string) uint32 {
@@ -442,9 +442,9 @@ func (s *server) attachTC(netns, dev string) error {
 
 	s.Lock()
 	s.qdiscs[inode] = qdisc{
-		netns:     netns,
-		device:    dev,
-		hasClsact: !find,
+		netns:         netns,
+		device:        dev,
+		managedClsact: !find,
 	}
 	s.Unlock()
 	return nil
@@ -473,7 +473,7 @@ func (s *server) cleanUpTC() {
 					log.Errorf("could not close rtnetlink socket: %v\n", err)
 				}
 			}()
-			if q.hasClsact {
+			if q.managedClsact {
 				err := rtnl.Qdisc().Delete(&tc.Object{
 					Msg: tc.Msg{
 						Family:  unix.AF_UNSPEC,
