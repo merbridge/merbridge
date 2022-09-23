@@ -1,6 +1,6 @@
 module github.com/merbridge/merbridge
 
-go 1.18
+go 1.19
 
 require (
 	github.com/DaoCloud/ckube v1.0.11
