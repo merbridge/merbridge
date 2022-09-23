@@ -413,7 +413,7 @@ func (s *server) attachTC(netns, dev string) error {
 	}
 	egress := ebpfs.GetTCEgressProg()
 	if ing == nil {
-		return fmt.Errorf("can not get ingress prog")
+		return fmt.Errorf("can not get egress prog")
 	}
 
 	filter = tc.Object{
