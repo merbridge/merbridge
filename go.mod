@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/DaoCloud/ckube v1.1.0
-	github.com/cilium/ebpf v0.9.1
+	github.com/cilium/ebpf v0.9.2
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.1.1
 	github.com/florianl/go-tc v0.4.1
