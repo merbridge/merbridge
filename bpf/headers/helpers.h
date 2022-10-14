@@ -60,6 +60,8 @@ static __u64 (*bpf_get_current_pid_tgid)() = (void *)
     BPF_FUNC_get_current_pid_tgid;
 static __u64 (*bpf_get_current_uid_gid)() = (void *)
     BPF_FUNC_get_current_uid_gid;
+static __u64 (*bpf_get_current_cgroup_id)() = (void *)
+    BPF_FUNC_get_current_cgroup_id;
 static void (*bpf_trace_printk)(const char *fmt, int fmt_size,
                                 ...) = (void *)BPF_FUNC_trace_printk;
 static __u64 (*bpf_get_current_comm)(void *buf, __u32 size_of_buf) = (void *)

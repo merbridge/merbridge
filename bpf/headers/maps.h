@@ -44,6 +44,14 @@ struct bpf_elf_map __section("maps") process_ip = {
     .max_elem = 1024,
 };
 
+// process_ip stores envoy's ip address.
+struct bpf_elf_map __section("maps") cgroup_ips = {
+    .type = BPF_MAP_TYPE_LRU_HASH,
+    .size_key = sizeof(__u64),
+    .size_value = sizeof(__u32) * 4,
+    .max_elem = 1024,
+};
+
 struct bpf_elf_map __section("maps") pair_original_dst = {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .size_key = sizeof(struct pair),
