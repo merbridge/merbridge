@@ -67,18 +67,20 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
     }
     __u32 curr_pod_ip = 0;
     __u32 _curr_pod_ip[4];
-    { 
+    {
         // check cache
         __u64 cgroup_id = bpf_get_current_cgroup_id();
         __u32 *ip = bpf_map_lookup_elem(&cgroup_ips, &cgroup_id);
         if (!ip) {
-            debugf("can not get current cgroup(%ld)'s ip from map, try to fetch from sock", cgroup_id);
+            debugf("can not get current cgroup(%ld)'s ip from map, try to "
+                   "fetch from sock",
+                   cgroup_id);
             // get ip addresses of current pod/ns.
             struct bpf_sock_tuple tuple = {};
             tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
             tuple.ipv4.daddr = 0;
-            struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
-                                                BPF_F_CURRENT_NETNS, 0);
+            struct bpf_sock *s = bpf_sk_lookup_tcp(
+                ctx, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0);
             if (s) {
                 __u32 curr_ip_mark = s->mark;
                 bpf_sk_release(s);
@@ -96,7 +98,7 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
         if (ip) {
             set_ipv6(_curr_pod_ip, ip); // network order
             curr_pod_ip = get_ipv4(ip);
-        } 
+        }
     }
 
     if (curr_pod_ip == 0) {
