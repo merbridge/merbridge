@@ -44,7 +44,8 @@ struct bpf_elf_map __section("maps") process_ip = {
     .max_elem = 1024,
 };
 
-// process_ip stores envoy's ip address.
+// cgroup_ips caches the ip address of each cgroup, which is used to speed up
+// the connect process.
 struct bpf_elf_map __section("maps") cgroup_ips = {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .size_key = sizeof(__u64),
