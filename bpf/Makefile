@@ -96,6 +96,9 @@ load-map-local_pod_ips:
 load-map-process_ip:
 	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
 
+load-map-cgroup_ips:
+	[ -f $(PROG_MOUNT_PATH)/cgroup_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cgroup_ips type lru_hash key 8 value 16 entries 1024 name cgroup_ips
+
 load-map-mark_pod_ips_map:
 	[ -f $(PROG_MOUNT_PATH)/mark_pod_ips_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/mark_pod_ips_map type hash key 4 value 16 entries 65535 name mark_pod_ips_map
 
@@ -111,6 +114,7 @@ clean-maps:
 		$(PROG_MOUNT_PATH)/sock_pair_map \
 		$(PROG_MOUNT_PATH)/pair_original_dst \
 		$(PROG_MOUNT_PATH)/process_ip \
+		$(PROG_MOUNT_PATH)/cgroup_ips \
 		$(PROG_MOUNT_PATH)/local_pod_ips \
 		$(PROG_MOUNT_PATH)/cookie_original_dst \
 		$(PROG_MOUNT_PATH)/mark_pod_ips_map
@@ -137,12 +141,13 @@ clean-redir:
 	sudo bpftool prog detach pinned $(PROG_MOUNT_PATH)/redir msg_verdict pinned $(PROG_MOUNT_PATH)/sock_pair_map
 	sudo rm $(PROG_MOUNT_PATH)/redir
 
-load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-mark_pod_ips_map
+load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-cgroup_ips load-map-mark_pod_ips_map
 	sudo bpftool -m prog loadall mb_connect.o $(PROG_MOUNT_PATH)/connect \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
 		map name mark_pod_ips_map pinned $(PROG_MOUNT_PATH)/mark_pod_ips_map \
-		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip
+		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
+		map name cgroup_ips pinned $(PROG_MOUNT_PATH)/cgroup_ips
 
 attach-connect:
 ifeq ($(ENABLE_IPV4),true)
