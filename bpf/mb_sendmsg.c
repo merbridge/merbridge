@@ -30,7 +30,8 @@ __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
     if (bpf_htons(ctx->user_port) != 53) {
         return 1;
     }
-    if (!is_port_listen_in_cgroup(ctx, 0, localhost, DNS_CAPTURE_PORT, DNS_CAPTURE_PORT_FLAG)) {
+    if (!is_port_listen_in_cgroup(ctx, 0, localhost, DNS_CAPTURE_PORT,
+                                  DNS_CAPTURE_PORT_FLAG)) {
         // this query is not from mesh injected pod, or DNS CAPTURE not enabled.
         // we do nothing.
         return 1;

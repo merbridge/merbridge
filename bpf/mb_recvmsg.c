@@ -30,7 +30,8 @@ __section("cgroup/recvmsg4") int mb_recvmsg4(struct bpf_sock_addr *ctx)
     if (bpf_htons(ctx->user_port) != DNS_CAPTURE_PORT) {
         return 1;
     }
-    if (!is_port_listen_in_cgroup(ctx, 0, localhost, DNS_CAPTURE_PORT, DNS_CAPTURE_PORT_FLAG)) {
+    if (!is_port_listen_in_cgroup(ctx, 0, localhost, DNS_CAPTURE_PORT,
+                                  DNS_CAPTURE_PORT_FLAG)) {
         // printk("not from pod");
         return 1;
     }
