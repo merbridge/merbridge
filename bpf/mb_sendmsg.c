@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+#include "headers/cgroup.h"
 #include "headers/helpers.h"
 #include "headers/maps.h"
 #include "headers/mesh.h"
@@ -29,8 +30,7 @@ __section("cgroup/sendmsg4") int mb_sendmsg4(struct bpf_sock_addr *ctx)
     if (bpf_htons(ctx->user_port) != 53) {
         return 1;
     }
-    if (!(is_port_listen_current_ns(ctx, ip_zero, OUT_REDIRECT_PORT) &&
-          is_port_listen_udp_current_ns(ctx, localhost, DNS_CAPTURE_PORT))) {
+    if (!is_port_listen_in_cgroup(ctx, 0, localhost, DNS_CAPTURE_PORT, DNS_CAPTURE_PORT_FLAG)) {
         // this query is not from mesh injected pod, or DNS CAPTURE not enabled.
         // we do nothing.
         return 1;

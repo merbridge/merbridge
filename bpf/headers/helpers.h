@@ -92,7 +92,7 @@ static long (*bpf_sock_hash_update)(
 static long (*bpf_msg_redirect_hash)(
     struct sk_msg_md *md, struct bpf_elf_map *map, void *key,
     __u64 flags) = (void *)BPF_FUNC_msg_redirect_hash;
-static long (*bpf_bind)(struct bpf_sock_addr *ctx, struct sockaddr *addr,
+static long (*bpf_bind)(struct bpf_sock_addr *ctx, struct sockaddr_in *addr,
                         int addr_len) = (void *)BPF_FUNC_bind;
 static long (*bpf_l4_csum_replace)(struct __sk_buff *skb, __u32 offset,
                                    __u64 from, __u64 to, __u64 flags) = (void *)
@@ -234,6 +234,22 @@ struct pair {
     __u32 dip[4];
     __u16 sport;
     __u16 dport;
+};
+
+struct cgroup_info {
+    __u32 is_in_mesh;
+    __u32 cgroup_ip[4];
+    // We can't specify which ports are listened to here, so we open up a flags,
+    // user-defined. E.g, for those who wish to determine if port 15001 is
+    // listened to, we can customize a flag, `IS_LISTEN_15001 = 1 << 2`, which
+    // we can subsequently detect by `flags & IS_LISTEN_15001`.
+    __u16 flags;
+    // detected_flags is used to determine if this operation has ever been
+    // performed. if `flags & IS_LISTEN_15001` is false but `detected_flags &
+    // IS_LISTEN_15001` is true, that means real true, we do not need recheck.
+    // but if `detected_flags & IS_LISTEN_15001` is false, that probably means
+    // we haven't tested it and need to retest it.
+    __u16 detected_flags;
 };
 
 #define MAX_ITEM_LEN 10

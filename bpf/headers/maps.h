@@ -46,10 +46,10 @@ struct bpf_elf_map __section("maps") process_ip = {
 
 // cgroup_ips caches the ip address of each cgroup, which is used to speed up
 // the connect process.
-struct bpf_elf_map __section("maps") cgroup_ips = {
+struct bpf_elf_map __section("maps") cgroup_info_map = {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .size_key = sizeof(__u64),
-    .size_value = sizeof(__u32) * 4,
+    .size_value = sizeof(struct cgroup_info),
     .max_elem = 1024,
 };
 
