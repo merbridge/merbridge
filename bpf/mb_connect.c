@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+#include "headers/cgroup.h"
 #include "headers/helpers.h"
 #include "headers/maps.h"
 #include "headers/mesh.h"
@@ -31,8 +32,8 @@ static inline int udp_connect4(struct bpf_sock_addr *ctx)
     if (bpf_htons(ctx->user_port) != 53) {
         return 1;
     }
-    if (!(is_port_listen_current_ns(ctx, ip_zero, OUT_REDIRECT_PORT) &&
-          is_port_listen_udp_current_ns(ctx, localhost, DNS_CAPTURE_PORT))) {
+    if (!is_port_listen_in_cgroup(ctx, 0, localhost, DNS_CAPTURE_PORT,
+                                  DNS_CAPTURE_PORT_FLAG)) {
         // this query is not from mesh injected pod, or DNS CAPTURE not enabled.
         // we do nothing.
         return 1;
@@ -59,47 +60,16 @@ static inline int udp_connect4(struct bpf_sock_addr *ctx)
 
 static inline int tcp_connect4(struct bpf_sock_addr *ctx)
 {
-    // todo(kebe7jun) more reliable way to verify,
-    if (!is_port_listen_current_ns(ctx, ip_zero, OUT_REDIRECT_PORT)) {
-        // bypass normal traffic.
-        // we only deal pod's traffic managed by istio or kuma.
+    struct cgroup_info cg_info = get_current_cgroup_info(ctx);
+    if (!cg_info.is_in_mesh) {
+        // bypass normal traffic. we only deal pod's
+        // traffic managed by istio or kuma.
         return 1;
     }
-    __u32 curr_pod_ip = 0;
+    __u32 curr_pod_ip;
     __u32 _curr_pod_ip[4];
-    {
-        // check cache
-        __u64 cgroup_id = bpf_get_current_cgroup_id();
-        __u32 *ip = bpf_map_lookup_elem(&cgroup_ips, &cgroup_id);
-        if (!ip) {
-            debugf("can not get current cgroup(%ld)'s ip from map, try to "
-                   "fetch from sock",
-                   cgroup_id);
-            // get ip addresses of current pod/ns.
-            struct bpf_sock_tuple tuple = {};
-            tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
-            tuple.ipv4.daddr = 0;
-            struct bpf_sock *s = bpf_sk_lookup_tcp(
-                ctx, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0);
-            if (s) {
-                __u32 curr_ip_mark = s->mark;
-                bpf_sk_release(s);
-                ip = bpf_map_lookup_elem(&mark_pod_ips_map, &curr_ip_mark);
-                if (!ip) {
-                    debugf("get ip for mark %x error", curr_ip_mark);
-                } else {
-                    // store to cache
-                    bpf_map_update_elem(&cgroup_ips, &cgroup_id, ip, BPF_ANY);
-                }
-            }
-        } else {
-            debugf("got ip %pI4 of cgroup(%ld) from map", ip, cgroup_id);
-        }
-        if (ip) {
-            set_ipv6(_curr_pod_ip, ip); // network order
-            curr_pod_ip = get_ipv4(ip);
-        }
-    }
+    set_ipv6(_curr_pod_ip, cg_info.cgroup_ip);
+    curr_pod_ip = get_ipv4(_curr_pod_ip);
 
     if (curr_pod_ip == 0) {
         debugf("get current pod ip error");
@@ -174,13 +144,34 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
             // todo port or ipranges ignore.
             // if we can get the pod ip, we use bind func to bind the pod's ip
             // as the source ip to avoid quaternions conflict of different pods.
-            struct sockaddr_in addr;
-            addr.sin_addr.s_addr = curr_pod_ip;
-            addr.sin_port = 0;
-            addr.sin_family = 2;
-            if (bpf_bind(ctx, (struct sockaddr *)&addr,
-                         sizeof(struct sockaddr_in))) {
-                printk("bind %pI4 error", &curr_pod_ip);
+            struct sockaddr_in addr = {
+                .sin_addr =
+                    {
+                        .s_addr = curr_pod_ip,
+                    },
+                .sin_port = 0,
+                .sin_family = 2,
+            };
+            // todo(kebe7jun) use the following way will cause an error like:
+            /*
+                578: (07) r2 += -40
+                ; if (bpf_bind(ctx, &addr, sizeof(struct sockaddr_in))) {
+                579: (bf) r1 = r6
+                580: (b7) r3 = 16
+                581: (85) call bpf_bind#64
+                invalid indirect read from stack R2 off -40+8 size 16
+                processed 1136 insns (limit 1000000) max_states_per_insn 1
+               total_states 81 peak_states 81 mark_read 20
+
+                libbpf: -- END LOG --
+                libbpf: failed to load program 'cgroup/connect4'
+                libbpf: failed to load object 'mb_connect.o'
+            */
+            // addr.sin_addr.s_addr = curr_pod_ip;
+            // addr.sin_port = 0;
+            // addr.sin_family = 2;
+            if (bpf_bind(ctx, &addr, sizeof(struct sockaddr_in))) {
+                debugf("bind %pI4 error", &curr_pod_ip);
             }
             ctx->user_ip4 = localhost;
         } else {
