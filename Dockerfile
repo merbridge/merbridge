@@ -1,5 +1,6 @@
-
-FROM ubuntu:20.04 as compiler
+# set default platform for docker build
+ARG BUILDPLATFORM=linux/amd64
+FROM --platform=$BUILDPLATFORM ubuntu:20.04 as compiler
 
 WORKDIR /app
 
@@ -14,7 +15,10 @@ RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
 RUN cd /app/linux/tools/bpf/bpftool && \
     make && make install
 
-FROM golang:1.19.2 as mbctl
+FROM --platform=$BUILDPLATFORM golang:1.19.2 as mbctl
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -25,11 +29,11 @@ RUN go mod download
 
 ADD . .
 
-RUN go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
-RUN go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
-RUN go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
 
-FROM ubuntu:20.04
+FROM --platform=$BUILDPLATFORM ubuntu:20.04
 
 WORKDIR /app
 
