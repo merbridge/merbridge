@@ -63,11 +63,14 @@ jobs:
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
     - name: install merbridge
       run: |
-        nohup go run -exec sudo ./app/main.go -k -m istio --cni-mode=true -d > mbctl.log &
+        nohup go run -exec sudo ./app/main.go -k -m istio -d > mbctl.log &
         while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - name: test connect with Merbridge
       run: |
         set -x
+        sleep 100000000
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
         sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
         # check if eBPF works
