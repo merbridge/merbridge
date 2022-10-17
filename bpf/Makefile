@@ -210,6 +210,7 @@ endif
 ifeq ($(ENABLE_IPV6),true)
 	sudo bpftool cgroup detach $(CGROUP2_PATH) sendmsg6 pinned $(PROG_MOUNT_PATH)/sendmsg/cgroup_sendmsg6
 endif
+	sudo rm -rf $(PROG_MOUNT_PATH)/sendmsg
 
 load-recvmsg: load-map-cookie_original_dst
 	sudo bpftool -m prog loadall mb_recvmsg.o $(PROG_MOUNT_PATH)/recvmsg \
@@ -230,6 +231,7 @@ endif
 ifeq ($(ENABLE_IPV6),true)
 	sudo bpftool cgroup detach $(CGROUP2_PATH) recvmsg6 pinned $(PROG_MOUNT_PATH)/recvmsg/cgroup_recvmsg6
 endif
+	sudo rm -rf $(PROG_MOUNT_PATH)/recvmsg
 
 load: compile load-from-obj
 
