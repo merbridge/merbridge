@@ -23,23 +23,30 @@ limitations under the License.
 #define IP_DETECTED_FLAG (1 << 0)
 #define DNS_CAPTURE_PORT_FLAG (1 << 1)
 
-static inline struct cgroup_info get_current_cgroup_info(void *ctx)
+// get_current_cgroup_info return 1 if succeed
+static inline int get_current_cgroup_info(void *ctx,
+                                          struct cgroup_info *cg_info)
 {
-    struct cgroup_info cg_info = {
-        .is_in_mesh = 0,
-        .cgroup_ip = {0, 0, 0, 0},
-        .flags = 0,
-        .detected_flags = 0,
-    };
+    if (!cg_info) {
+        printk("cg_info can not be NULL");
+        return 0;
+    }
     __u64 cgroup_id = bpf_get_current_cgroup_id();
     void *info = bpf_map_lookup_elem(&cgroup_info_map, &cgroup_id);
     if (!info) {
+        struct cgroup_info _default = {
+            .is_in_mesh = 0,
+            .cgroup_ip = {0, 0, 0, 0},
+            .flags = 0,
+            .detected_flags = 0,
+        };
         // not checked ever
         if (!is_port_listen_current_ns(ctx, ip_zero, OUT_REDIRECT_PORT)) {
             // not in mesh
-            cg_info.is_in_mesh = 0;
+            _default.is_in_mesh = 0;
+            debugf("can not get port listen for cgroup(%ld)", cgroup_id);
         } else {
-            cg_info.is_in_mesh = 1;
+            _default.is_in_mesh = 1;
             // get ip addresses of current pod/ns.
             struct bpf_sock_tuple tuple = {};
             tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
@@ -54,16 +61,22 @@ static inline struct cgroup_info get_current_cgroup_info(void *ctx)
                 if (!ip) {
                     debugf("get ip for mark 0x%x error", curr_ip_mark);
                 } else {
-                    set_ipv6(cg_info.cgroup_ip, ip); // network order
+                    set_ipv6(_default.cgroup_ip, ip); // network order
                 }
             }
-            cg_info.detected_flags |= IP_DETECTED_FLAG;
+            _default.detected_flags |= IP_DETECTED_FLAG;
         }
-        bpf_map_update_elem(&cgroup_info_map, &cgroup_id, &cg_info, BPF_ANY);
+        if (bpf_map_update_elem(&cgroup_info_map, &cgroup_id, &_default,
+                                BPF_ANY)) {
+            printk("update cgroup_info_map of cgroup(%ld) error", cgroup_id);
+            return 0;
+        }
+        *cg_info = _default;
     } else {
-        cg_info = *(struct cgroup_info *)info;
+        *cg_info = *(struct cgroup_info *)info;
     }
-    return cg_info;
+    debugf("pid: %d, cgroup(%ld) is in mesh: %d", bpf_get_current_pid_tgid() >> 32, cgroup_id, cg_info->is_in_mesh);
+    return 1;
 }
 
 // is_port_listen_in_cgroup is used to detect whether a port is listened to in
@@ -71,7 +84,10 @@ static inline struct cgroup_info get_current_cgroup_info(void *ctx)
 static inline int is_port_listen_in_cgroup(void *ctx, __u16 is_tcp, __u32 ip,
                                            __u16 port, __u16 port_flag)
 {
-    struct cgroup_info cg_info = get_current_cgroup_info(ctx);
+    struct cgroup_info cg_info;
+    if (!get_current_cgroup_info(ctx, &cg_info)) {
+        return 0;
+    }
     if (!cg_info.is_in_mesh) {
         return 0;
     }

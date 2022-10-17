@@ -60,7 +60,10 @@ static inline int udp_connect4(struct bpf_sock_addr *ctx)
 
 static inline int tcp_connect4(struct bpf_sock_addr *ctx)
 {
-    struct cgroup_info cg_info = get_current_cgroup_info(ctx);
+    struct cgroup_info cg_info;
+    if (!get_current_cgroup_info(ctx, &cg_info)) {
+        return 1;
+    }
     if (!cg_info.is_in_mesh) {
         // bypass normal traffic. we only deal pod's
         // traffic managed by istio or kuma.
