@@ -75,7 +75,6 @@ static inline int get_current_cgroup_info(void *ctx,
     } else {
         *cg_info = *(struct cgroup_info *)info;
     }
-    debugf("pid: %d, cgroup(%ld) is in mesh: %d", bpf_get_current_pid_tgid() >> 32, cgroup_id, cg_info->is_in_mesh);
     return 1;
 }
 

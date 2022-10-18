@@ -14,8 +14,8 @@ jobs:
     timeout-minutes: 30
     if: ${{ contains(github.event.pull_request.labels.*.name, 'needs-e2e-test') }}
     env: 
-      ISTIO_VERSION: '1.12.2'
-      KIND_VERSION: v0.11.1
+      ISTIO_VERSION: '1.15.2'
+      KIND_VERSION: v0.16.0
       KERNEL_VERSION: v5.4
     steps:
     - uses: actions/checkout@v3
@@ -65,12 +65,9 @@ jobs:
       run: |
         nohup go run -exec sudo ./app/main.go -k -m istio -d > mbctl.log &
         while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
     - name: test connect with Merbridge
       run: |
         set -x
-        sleep 100000000
         kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
         sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
         # check if eBPF works
@@ -87,7 +84,7 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'needs-e2e-test') }}
     env:
       KUMA_VERSION: '1.7.0'
-      KIND_VERSION: v0.11.1
+      KIND_VERSION: v0.16.0
       KERNEL_VERSION: v5.4
     steps:
     - uses: actions/checkout@v3
