@@ -20,10 +20,9 @@ limitations under the License.
 #include "mesh.h"
 #include <linux/bpf.h>
 
-#define IP_DETECTED_FLAG (1 << 0)
 #define DNS_CAPTURE_PORT_FLAG (1 << 1)
 
-// get_current_cgroup_info return 1 if succeed
+// get_current_cgroup_info return cgroup_id if succeed, 0 for error
 static inline int get_current_cgroup_info(void *ctx,
                                           struct cgroup_info *cg_info)
 {
@@ -64,7 +63,6 @@ static inline int get_current_cgroup_info(void *ctx,
                     set_ipv6(_default.cgroup_ip, ip); // network order
                 }
             }
-            _default.detected_flags |= IP_DETECTED_FLAG;
         }
         if (bpf_map_update_elem(&cgroup_info_map, &cgroup_id, &_default,
                                 BPF_ANY)) {
@@ -75,7 +73,7 @@ static inline int get_current_cgroup_info(void *ctx,
     } else {
         *cg_info = *(struct cgroup_info *)info;
     }
-    return 1;
+    return cgroup_id;
 }
 
 // is_port_listen_in_cgroup is used to detect whether a port is listened to in
@@ -84,7 +82,8 @@ static inline int is_port_listen_in_cgroup(void *ctx, __u16 is_tcp, __u32 ip,
                                            __u16 port, __u16 port_flag)
 {
     struct cgroup_info cg_info;
-    if (!get_current_cgroup_info(ctx, &cg_info)) {
+    __u64 cgroup_id = get_current_cgroup_info(ctx, &cg_info);
+    if (!cgroup_id) {
         return 0;
     }
     if (!cg_info.is_in_mesh) {
@@ -106,10 +105,6 @@ static inline int is_port_listen_in_cgroup(void *ctx, __u16 is_tcp, __u32 ip,
     cg_info.detected_flags |= port_flag;
     if (listen)
         cg_info.flags |= port_flag;
-    __u64 cgroup_id = bpf_get_current_cgroup_id();
     bpf_map_update_elem(&cgroup_info_map, &cgroup_id, &cg_info, BPF_ANY);
-    if (cg_info.flags & port_flag) {
-        return 1;
-    }
-    return 0;
+    return listen;
 }

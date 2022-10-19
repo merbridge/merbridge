@@ -330,34 +330,18 @@ static inline int udp_connect6(struct bpf_sock_addr *ctx)
 
 static inline int tcp_connect6(struct bpf_sock_addr *ctx)
 {
-    // todo(kebe7jun) more reliable way to verify,
-    if (!is_port_listen_current_ns6(ctx, ip_zero6, OUT_REDIRECT_PORT)) {
-        // bypass normal traffic.
-        // we only deal pod's traffic managed by istio or kuma.
+    struct cgroup_info cg_info;
+    if (!get_current_cgroup_info(ctx, &cg_info)) {
+        return 1;
+    }
+    if (!cg_info.is_in_mesh) {
+        // bypass normal traffic. we only deal pod's
+        // traffic managed by istio or kuma.
         return 1;
     }
 
-    // get ip addresses of current pod/ns.
-    struct bpf_sock_tuple tuple = {};
-    tuple.ipv6.dport = bpf_htons(SOCK_IP_MARK_PORT);
-    set_ipv6(tuple.ipv6.daddr, ip_zero6);
-    struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv6),
-                                           BPF_F_CURRENT_NETNS, 0);
-    if (!s) {
-        // cni mode required for ipv6
-        debugf("dummy socket not found");
-        return 1;
-    }
-
-    __u32 curr_ip_mark = s->mark;
-    bpf_sk_release(s);
-    __u32 *ip = bpf_map_lookup_elem(&mark_pod_ips_map, &curr_ip_mark);
-    if (!ip) {
-        debugf("get ip for mark %x error", curr_ip_mark);
-        return 1;
-    }
     __u32 curr_pod_ip[4];
-    set_ipv6(curr_pod_ip, ip);
+    set_ipv6(curr_pod_ip, cg_info.cgroup_ip);
     __u32 dst_ip[4];
     set_ipv6(dst_ip, ctx->user_ip6);
     __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
@@ -390,7 +374,7 @@ static inline int tcp_connect6(struct bpf_sock_addr *ctx)
         set_ipv6(addr.sin6_addr.in6_u.u6_addr32, curr_pod_ip);
         addr.sin6_port = 0;
         addr.sin6_family = 10;
-        if (bpf_bind(ctx, (struct sockaddr *)&addr,
+        if (bpf_bind(ctx, (struct sockaddr_in6 *)&addr,
                      sizeof(struct sockaddr_in6))) {
             printk("bind %pI6c error", curr_pod_ip);
         }
