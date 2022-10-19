@@ -22,7 +22,7 @@ limitations under the License.
 
 #define DNS_CAPTURE_PORT_FLAG (1 << 1)
 
-// get_current_cgroup_info return cgroup_id if succeed, 0 for error
+// get_current_cgroup_info return 1 if succeed, 0 for error
 static inline int get_current_cgroup_info(void *ctx,
                                           struct cgroup_info *cg_info)
 {
@@ -34,6 +34,7 @@ static inline int get_current_cgroup_info(void *ctx,
     void *info = bpf_map_lookup_elem(&cgroup_info_map, &cgroup_id);
     if (!info) {
         struct cgroup_info _default = {
+            .id = cgroup_id,
             .is_in_mesh = 0,
             .cgroup_ip = {0, 0, 0, 0},
             .flags = 0,
@@ -73,7 +74,7 @@ static inline int get_current_cgroup_info(void *ctx,
     } else {
         *cg_info = *(struct cgroup_info *)info;
     }
-    return cgroup_id;
+    return 1;
 }
 
 // is_port_listen_in_cgroup is used to detect whether a port is listened to in
@@ -82,8 +83,7 @@ static inline int is_port_listen_in_cgroup(void *ctx, __u16 is_tcp, __u32 ip,
                                            __u16 port, __u16 port_flag)
 {
     struct cgroup_info cg_info;
-    __u64 cgroup_id = get_current_cgroup_info(ctx, &cg_info);
-    if (!cgroup_id) {
+    if (!get_current_cgroup_info(ctx, &cg_info)) {
         return 0;
     }
     if (!cg_info.is_in_mesh) {
@@ -105,6 +105,6 @@ static inline int is_port_listen_in_cgroup(void *ctx, __u16 is_tcp, __u32 ip,
     cg_info.detected_flags |= port_flag;
     if (listen)
         cg_info.flags |= port_flag;
-    bpf_map_update_elem(&cgroup_info_map, &cgroup_id, &cg_info, BPF_ANY);
+    bpf_map_update_elem(&cgroup_info_map, &cg_info.id, &cg_info, BPF_ANY);
     return listen;
 }

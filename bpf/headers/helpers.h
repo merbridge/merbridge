@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #pragma once
+#include <asm-generic/int-ll64.h>
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/in.h>
@@ -237,6 +238,7 @@ struct pair {
 };
 
 struct cgroup_info {
+    __u64 id;
     __u32 is_in_mesh;
     __u32 cgroup_ip[4];
     // We can't specify which ports are listened to here, so we open up a flags,

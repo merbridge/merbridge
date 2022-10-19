@@ -97,7 +97,7 @@ load-map-process_ip:
 	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip
 
 load-map-cgroup_info_map:
-	[ -f $(PROG_MOUNT_PATH)/cgroup_info_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cgroup_info_map type lru_hash key 8 value 24 entries 1024 name cgroup_info_map
+	[ -f $(PROG_MOUNT_PATH)/cgroup_info_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cgroup_info_map type lru_hash key 8 value 32 entries 1024 name cgroup_info_map
 
 load-map-mark_pod_ips_map:
 	[ -f $(PROG_MOUNT_PATH)/mark_pod_ips_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/mark_pod_ips_map type hash key 4 value 16 entries 65535 name mark_pod_ips_map
