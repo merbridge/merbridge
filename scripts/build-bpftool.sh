@@ -16,7 +16,7 @@
 set -ex
 
 if [ -z "$KERNEL_VERSION" ]; then
-    KERNEL_VERSION=v5.4
+    KERNEL_VERSION=v5.7
 fi
 if [ -z "$SKIP_INSTALL" ]; then
     apt update
