@@ -57,7 +57,12 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		go pw.Run(stop)
+		go func() {
+			err := pw.Run(stop)
+			if err != nil {
+				panic(err)
+			}
+		}()
 		// todo: wait for stop
 		if err := controller.Run(cniReady, pw, stop); err != nil {
 			log.Fatal(err)
