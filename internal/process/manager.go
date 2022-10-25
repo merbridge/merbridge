@@ -340,7 +340,14 @@ func (w *processManager) OnPodStatusChanged(ip string, isInMesh bool, isAmbient 
 }
 
 func (w *processManager) Run(stop chan struct{}) error {
-	err := w.processWatcher.Start()
+	netns, err := ns.GetNS(config.HostProc + "/1/ns/net")
+	if err != nil {
+		return err
+	}
+	defer netns.Close()
+	err = netns.Do(func(nn ns.NetNS) error {
+		return w.processWatcher.Start()
+	})
 	if err != nil {
 		return err
 	}
