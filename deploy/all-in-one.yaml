@@ -20,6 +20,7 @@ rules:
   - ""
   resources:
   - pods
+  - namespaces
   verbs:
   - list
   - get
@@ -70,6 +71,7 @@ spec:
         - istio
         - --use-reconnect=true
         - --cni-mode=false
+        - -d
         lifecycle:
           preStop:
             exec:
