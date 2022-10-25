@@ -27,6 +27,8 @@ const (
 	ModeOsm         = "osm"
 	LocalPodIps     = "/sys/fs/bpf/local_pod_ips"
 	PairOriginalDst = "/sys/fs/bpf/pair_original_dst"
+	CgroupInfoMap   = "/sys/fs/bpf/cgroup_info_map"
+	SettingsMap     = "/sys/fs/bpf/settings"
 )
 
 var (

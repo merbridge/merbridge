@@ -46,6 +46,10 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
     case 2: // ipv4
         set_ipv4(p.dip, ctx->sk->src_ip4);
         set_ipv4(p.sip, ctx->sk->dst_ip4);
+        debugf("optname: %d, dst: addr: %pI4:%d", ctx->optname, p.dip + 3,
+               bpf_htons(p.dport));
+        debugf("optname: %d, source: addr: %pI4:%d", ctx->optname, p.sip + 3,
+               bpf_htons(p.sport));
         origin = bpf_map_lookup_elem(&pair_original_dst, &p);
         if (origin) {
             // rewrite original_dst
@@ -62,6 +66,10 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
                 .sin_port = origin->port,
             };
             *(struct sockaddr_in *)ctx->optval = sa;
+            debugf("origin dst: addr: %pI4:%d", &sa.sin_addr.s_addr,
+                   bpf_htons(origin->port));
+        } else {
+            debugf("can not get original dst");
         }
         break;
 #endif

@@ -61,15 +61,14 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: "ghcr.io/merbridge/merbridge:latest"
+      - image: "ghcr.io/merbridge/merbridge:ambient"
         imagePullPolicy: Always
         name: merbridge
+        command:
+        - sh
         args:
-        - /app/mbctl
-        - -m
-        - istio
-        - --use-reconnect=true
-        - --cni-mode=false
+        - -c
+        - 'sleep 100; /app/mbctl -m istio --use-reconnect=true --cni-mode=false'
         lifecycle:
           preStop:
             exec:
