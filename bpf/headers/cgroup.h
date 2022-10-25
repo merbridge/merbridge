@@ -20,7 +20,9 @@ limitations under the License.
 #include "mesh.h"
 #include <linux/bpf.h>
 
+#define AMBIENT_MESH_FLAG (1 << 0)
 #define DNS_CAPTURE_PORT_FLAG (1 << 1)
+#define ZTUNNEL_FLAG (1 << 2)
 
 // get_current_cgroup_info return 1 if succeed, 0 for error
 static inline int get_current_cgroup_info(void *ctx,

@@ -102,6 +102,9 @@ load-map-cgroup_info_map:
 load-map-mark_pod_ips_map:
 	[ -f $(PROG_MOUNT_PATH)/mark_pod_ips_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/mark_pod_ips_map type hash key 4 value 16 entries 65535 name mark_pod_ips_map
 
+load-map-settings:
+	[ -f $(PROG_MOUNT_PATH)/settings ] || sudo bpftool map create $(PROG_MOUNT_PATH)/settings type hash key 4 value 16 entries 256 name settings
+
 load-map-pair_original_dst:
 	[ -f $(PROG_MOUNT_PATH)/pair_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/pair_original_dst type lru_hash key 36 value 24 entries 65535 name pair_original_dst
 
@@ -117,7 +120,8 @@ clean-maps:
 		$(PROG_MOUNT_PATH)/cgroup_info_map \
 		$(PROG_MOUNT_PATH)/local_pod_ips \
 		$(PROG_MOUNT_PATH)/cookie_original_dst \
-		$(PROG_MOUNT_PATH)/mark_pod_ips_map
+		$(PROG_MOUNT_PATH)/mark_pod_ips_map \
+		$(PROG_MOUNT_PATH)/settings
 
 load-getsock: load-map-pair_original_dst
 	sudo bpftool -m prog load mb_get_sockopts.o $(PROG_MOUNT_PATH)/get_sockopts \
@@ -141,13 +145,14 @@ clean-redir:
 	sudo bpftool prog detach pinned $(PROG_MOUNT_PATH)/redir msg_verdict pinned $(PROG_MOUNT_PATH)/sock_pair_map
 	sudo rm $(PROG_MOUNT_PATH)/redir
 
-load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-cgroup_info_map load-map-mark_pod_ips_map
+load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-cgroup_info_map load-map-mark_pod_ips_map load-map-settings
 	sudo bpftool -m prog loadall mb_connect.o $(PROG_MOUNT_PATH)/connect \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
 		map name mark_pod_ips_map pinned $(PROG_MOUNT_PATH)/mark_pod_ips_map \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
-		map name cgroup_info_map pinned $(PROG_MOUNT_PATH)/cgroup_info_map
+		map name cgroup_info_map pinned $(PROG_MOUNT_PATH)/cgroup_info_map \
+		map name settings pinned $(PROG_MOUNT_PATH)/settings
 
 attach-connect:
 ifeq ($(ENABLE_IPV4),true)
@@ -248,4 +253,4 @@ load-from-obj: init-bpffs load-connect load-sockops load-getsock load-redir load
 
 attach: attach-connect attach-sockops attach-getsock attach-redir attach-bind attach-sendmsg attach-recvmsg
 
-clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind clean-sendmsg clean-recvmsg
+clean: clean-connect clean-sockops clean-getsock clean-redir clean-bind clean-sendmsg clean-recvmsg clean-maps compile-clean

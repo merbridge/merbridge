@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -34,10 +35,21 @@ import (
 	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/internal/ebpfs"
 	"github.com/merbridge/merbridge/internal/pods"
+	"github.com/merbridge/merbridge/internal/process"
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
-func RunLocalPodController(client kubernetes.Interface, stop chan struct{}) error {
+var (
+	// todo optimize do not use global var
+	globalPm process.ProcessManager
+	podMap   = map[string]map[string]*v1.Pod{}
+	// key is ns name, value means ambient mode
+	nsMap = map[string]bool{}
+	lock  sync.RWMutex
+)
+
+func RunLocalPodController(client kubernetes.Interface, pm process.ProcessManager, stop chan struct{}) error {
+	globalPm = pm
 	var err error
 
 	if err = ebpfs.InitLoadPinnedMap(); err != nil {
@@ -104,20 +116,50 @@ type podConfig struct {
 }
 
 func addFunc(obj interface{}) {
+	if ns, ok := obj.(*v1.Namespace); ok {
+		lock.Lock()
+		isAmbient := false
+		if ns.Labels["istio.io/dataplane-mode"] == "ambient" {
+			isAmbient = true
+		}
+		nsMap[ns.Name] = isAmbient
+		if _, ok := podMap[ns.Name]; !ok {
+			podMap[ns.Name] = make(map[string]*v1.Pod)
+		}
+		lock.Unlock()
+		for _, pod := range podMap[ns.Name] {
+			addFunc(pod)
+		}
+	}
 	pod, ok := obj.(*v1.Pod)
 	if !ok || len(pod.Status.PodIP) == 0 {
 		return
 	}
-	if config.Mode == config.ModeIstio && !pods.IsIstioInjectedSidecar(pod) {
-		return
+	lock.Lock()
+	defer lock.Unlock()
+	if _, ok := podMap[pod.Namespace]; !ok {
+		podMap[pod.Namespace] = make(map[string]*v1.Pod)
 	}
-	if config.Mode == config.ModeLinkerd && !pods.IsLinkerdInjectedSidecar(pod) {
-		return
+	podMap[pod.Namespace][pod.Name] = pod
+	isInjectedSidecar := false
+	switch config.Mode {
+	case config.ModeIstio:
+		isInjectedSidecar = pods.IsIstioInjectedSidecar(pod)
+	case config.ModeLinkerd:
+		isInjectedSidecar = pods.IsLinkerdInjectedSidecar(pod)
+	case config.ModeKuma:
+		isInjectedSidecar = pods.IsKumaInjectedSidecar(pod)
 	}
-	if config.Mode == config.ModeKuma && !pods.IsKumaInjectedSidecar(pod) {
-		return
+	isAmbient := nsMap[pod.Namespace]
+	isZtunnel := pod.Labels["app"] == "ztunnel"
+	isInMesh := false
+	if isAmbient || isInjectedSidecar || isZtunnel {
+		isInMesh = true
 	}
-	log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
+	if isZtunnel {
+		isAmbient = true
+	}
+	log.Debugf("got pod updated %s/%s, isAmbient: %v, isZtunnel: %v", pod.Namespace, pod.Name, isAmbient, isZtunnel)
 
 	_ip, _ := linux.IP2Linux(pod.Status.PodIP)
 	log.Infof("update local_pod_ips with ip: %s", pod.Status.PodIP)
@@ -130,6 +172,9 @@ func addFunc(obj interface{}) {
 	err := ebpfs.GetLocalIPMap().Update(_ip, &p, ebpf.UpdateAny)
 	if err != nil {
 		log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
+	}
+	if err := globalPm.OnPodStatusChanged(pod.Status.PodIP, isInMesh, isAmbient, isZtunnel); err != nil {
+		log.Debugf("OnProcessStatusChanged error: %v", err)
 	}
 }
 
@@ -284,6 +329,10 @@ func parsePodConfigFromAnnotationsKuma(annotations map[string]string, pod *podCo
 }
 
 func updateFunc(old, cur interface{}) {
+	if _, ok := cur.(*v1.Namespace); ok {
+		addFunc(cur)
+		return
+	}
 	oldPod, ok := old.(*v1.Pod)
 	if !ok {
 		return

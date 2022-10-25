@@ -30,6 +30,7 @@ import (
 	"github.com/merbridge/merbridge/controller"
 	cniserver "github.com/merbridge/merbridge/internal/cni-server"
 	"github.com/merbridge/merbridge/internal/ebpfs"
+	"github.com/merbridge/merbridge/internal/process"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -52,8 +53,13 @@ var rootCmd = &cobra.Command{
 				return err
 			}
 		}
+		pw, err := process.NewProcessManager("")
+		if err != nil {
+			panic(err)
+		}
+		go pw.Run(stop)
 		// todo: wait for stop
-		if err := controller.Run(cniReady, stop); err != nil {
+		if err := controller.Run(cniReady, pw, stop); err != nil {
 			log.Fatal(err)
 			return err
 		}

@@ -222,21 +222,6 @@ static inline int is_port_listen_udp_current_ns6(void *ctx, __u32 *ip,
     return 0;
 }
 
-struct origin_info {
-    __u32 ip[4];
-    __u32 pid;
-    __u16 port;
-    // last bit means that ip of process is detected.
-    __u16 flags;
-};
-
-struct pair {
-    __u32 sip[4];
-    __u32 dip[4];
-    __u16 sport;
-    __u16 dport;
-};
-
 struct cgroup_info {
     __u64 id;
     __u32 is_in_mesh;
@@ -252,6 +237,21 @@ struct cgroup_info {
     // but if `detected_flags & IS_LISTEN_15001` is false, that probably means
     // we haven't tested it and need to retest it.
     __u16 detected_flags;
+};
+
+struct origin_info {
+    __u32 ip[4];
+    __u32 pid;
+    __u16 port;
+    // last bit means that ip of process is detected.
+    __u16 flags;
+};
+
+struct pair {
+    __u32 sip[4];
+    __u32 dip[4];
+    __u16 sport;
+    __u16 dport;
 };
 
 #define MAX_ITEM_LEN 10

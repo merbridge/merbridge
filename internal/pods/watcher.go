@@ -48,10 +48,13 @@ func (w *Watcher) Start() error {
 		selectByNode = fields.OneTermEqualSelector("spec.nodeName", w.CurrentNodeName).String()
 	}
 	kubeInformerFactory := kubeinformer.NewFilteredSharedInformerFactory(
-		w.Client, 30*time.Second, metav1.NamespaceAll,
+		w.Client, 60*time.Second, metav1.NamespaceAll,
 		func(o *metav1.ListOptions) {
 			o.FieldSelector = selectByNode
 		},
+	)
+	nsInformerFac := kubeinformer.NewSharedInformerFactory(
+		w.Client, 60*time.Second,
 	)
 
 	kubeInformerFactory.Core().V1().Pods().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -59,7 +62,14 @@ func (w *Watcher) Start() error {
 		UpdateFunc: w.OnUpdateFunc,
 		DeleteFunc: w.OnDeleteFunc,
 	})
+	// todo refactor this
+	nsInformerFac.Core().V1().Namespaces().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    w.OnAddFunc,
+		UpdateFunc: w.OnUpdateFunc,
+		DeleteFunc: w.OnDeleteFunc,
+	})
 	kubeInformerFactory.Start(w.Stop)
+	nsInformerFac.Start(w.Stop)
 	return nil
 }
 
