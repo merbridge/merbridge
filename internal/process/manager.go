@@ -351,6 +351,7 @@ func (w *processManager) Run(stop chan struct{}) error {
 	if err != nil {
 		return err
 	}
+	os.Setenv("HOST_PROC", config.HostProc)
 	ids, err := process.Pids()
 	if err != nil {
 		return err
