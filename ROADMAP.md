@@ -5,16 +5,21 @@
 - [X] Linkerd2 Supported
 - [X] Kuma Support
 - [ ] Cross-node mode(XDP?)
-- [ ] IPv6 Support
+- [X] IPv6 Support
+- [ ] Dual stack
 - [X] DNS Redirect
+- [ ] Ambient Mesh Support
+- [ ] Lower kernel required (5.4? limited)
+- [ ] Optimize prog performance
 
 ## Control Plane
 - [ ] Metrics
-- [ ] Istio sidecar annotations
+- [X] Istio sidecar annotations
+- [ ] Ambient Mesh Support
 
 ## CNI
-- [ ] Merbridge CNI
+- [X] Merbridge CNI
 
 ## Docs
-- [ ] Website
+- [X] Website
 - [X] Blog
