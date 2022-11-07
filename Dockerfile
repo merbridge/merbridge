@@ -15,7 +15,7 @@ RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
 RUN cd /app/linux/tools/bpf/bpftool && \
     make && make install
 
-FROM --platform=$BUILDPLATFORM golang:1.19.2 as mbctl
+FROM --platform=$BUILDPLATFORM golang:1.19.3 as mbctl
 
 ARG TARGETOS
 ARG TARGETARCH
