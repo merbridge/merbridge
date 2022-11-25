@@ -45,6 +45,10 @@ static inline int get_current_cgroup_info(void *ctx,
             // not in mesh
             _default.is_in_mesh = 0;
             debugf("can not get port listen for cgroup(%ld)", cgroup_id);
+            // FIXME(kebe7jun) find a better ways to avoid affecting the
+            // performance of network connections in non-Sidecar mode.
+            *cg_info = _default;
+            return 0;
         } else {
             _default.is_in_mesh = 1;
             // get ip addresses of current pod/ns.
