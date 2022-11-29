@@ -220,7 +220,7 @@ func parsePodConfigFromAnnotations(annotations map[string]string, pod *podConfig
 			}
 		}
 	}
-	if v, ok := annotations["traffic.sidecar.istio.io/includeInboundPorts"]; ok {
+	if v, ok := annotations["traffic.sidecar.istio.io/includeOutboundPorts"]; ok {
 		includeOutboundPorts := getPortsFromString(v)
 		if len(includeOutboundPorts) > 0 {
 			for i, p := range includeOutboundPorts {
