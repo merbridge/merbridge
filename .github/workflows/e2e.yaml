@@ -60,15 +60,22 @@ jobs:
         while true; do [ "$(kubectl get po -l app=helloworld | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
     - name: test connect without Merbridge
       run: |
-        kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
+        kubectl exec deploy/sleep -c sleep -- curl -s -v helloworld:5000/hello
     - name: install merbridge
       run: |
         nohup go run -exec sudo ./app/main.go -k -m istio -d > mbctl.log &
         while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
+      with:
+        ## limits ssh access and adds the ssh public key for the user which triggered the workflow
+        limit-access-to-actor: true
+        ## limits ssh access and adds the ssh public keys of the listed GitHub users
+        limit-access-to-users: kebe7jun
     - name: test connect with Merbridge
       run: |
         set -x
-        kubectl exec $(kubectl get po -l app=sleep -o=jsonpath='{..metadata.name}') -c sleep -- curl -s -v helloworld:5000/hello
+        kubectl exec deploy/sleep -c sleep -- curl -s -v helloworld:5000/hello || (sudo cat /sys/kernel/debug/tracing/trace; exit 1)
         sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
         # check if eBPF works
         [ "$(sudo cat /tmp/trace-log | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 11)
