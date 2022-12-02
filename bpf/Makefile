@@ -195,9 +195,11 @@ clean-sockops:
 	sudo bpftool cgroup detach $(CGROUP2_PATH) sock_ops pinned $(PROG_MOUNT_PATH)/sockops
 	sudo rm -rf $(PROG_MOUNT_PATH)/sockops
 
-load-bind:
+load-bind: load-map-cgroup_info_map load-map-settings
 ifeq ($(ENABLE_IPV4),true)
-	sudo bpftool -m prog load mb_bind.o $(PROG_MOUNT_PATH)/bind
+	sudo bpftool -m prog load mb_bind.o $(PROG_MOUNT_PATH)/bind \
+		map name cgroup_info_map pinned $(PROG_MOUNT_PATH)/cgroup_info_map \
+		map name settings pinned $(PROG_MOUNT_PATH)/settings
 endif
 
 attach-bind:
