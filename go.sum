@@ -823,8 +823,8 @@ github.com/mdlayher/netlink v1.6.0/go.mod h1:0o3PlBmGst1xve7wQ7j/hwpNaFaH4qCRyWC
 github.com/mdlayher/socket v0.0.0-20210307095302-262dc9984e00/go.mod h1:GAFlyu4/XV68LkQKYzKhIo/WW7j3Zi0YRAz/BOoanUc=
 github.com/mdlayher/socket v0.1.1 h1:q3uOGirUPfAV2MUoaC7BavjQ154J7+JOkTWyiV+intI=
 github.com/mdlayher/socket v0.1.1/go.mod h1:mYV5YIZAfHh4dzDVzI8x8tWLWCliuX8Mon5Awbj+qDs=
-github.com/merbridge/process-watcher v0.0.2 h1:MPpC6P6JZP+JdbH9Gilf2ZCUP8OHRWrCnSqkWQLnIhg=
-github.com/merbridge/process-watcher v0.0.2/go.mod h1:65lM93B0nZLbg66SAFHrjqZYxKwFPcX1JOATAa3jOL8=
+github.com/merbridge/process-watcher v0.0.3-0.20221202041605-4f3cea626824 h1:c0v/O7V2t3mgLrmAlYTNVAvXYLc6W4loLKLzLJ7sIII=
+github.com/merbridge/process-watcher v0.0.3-0.20221202041605-4f3cea626824/go.mod h1:65lM93B0nZLbg66SAFHrjqZYxKwFPcX1JOATAa3jOL8=
 github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517/go.mod h1:KQ7+USdGKfpPjXk4Ga+5XxQM4Lm4e3gAogrreFAYpOg=
 github.com/mgechev/revive v1.1.2/go.mod h1:bnXsMr+ZTH09V5rssEI+jHAZ4z+ZdyhgO/zsy3EhK+0=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
