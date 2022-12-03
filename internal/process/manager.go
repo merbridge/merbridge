@@ -349,11 +349,13 @@ func (w *processManager) Run(stop chan struct{}) error {
 		return w.processWatcher.Start()
 	})
 	if err != nil {
+		log.Errorf("start processWatcher error: %v", err)
 		return err
 	}
 	os.Setenv("HOST_PROC", config.HostProc)
 	ids, err := process.Pids()
 	if err != nil {
+		log.Errorf("read processes: %v", err)
 		return err
 	}
 	for _, pid := range ids {

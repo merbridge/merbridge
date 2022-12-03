@@ -9,7 +9,7 @@ require (
 	github.com/florianl/go-tc v0.4.1
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/gorilla/mux v1.8.0
-	github.com/merbridge/process-watcher v0.0.3-0.20221202041605-4f3cea626824
+	github.com/merbridge/process-watcher v0.0.3-0.20221203072042-722ddfb08019
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/sirupsen/logrus v1.9.0
