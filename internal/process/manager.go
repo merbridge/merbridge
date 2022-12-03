@@ -128,10 +128,10 @@ func getProcessCgroup(pid uint32) (string, error) {
 	lines := strings.Split(strings.TrimSpace(string(cgr)), "\n")
 	cgline := lines[len(lines)-1]
 	cg := strings.Split(cgline, ":")
-	if len(cg) != 3 {
+	if len(cg) < 3 {
 		return "", fmt.Errorf("error cgroup found: %s", cgline)
 	}
-	return cg[len(cg)-1], nil
+	return strings.Join(cg[2:], ":"), nil
 }
 
 func getProcessIps(pid uint32) ([]net.Addr, error) {
