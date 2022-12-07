@@ -105,14 +105,14 @@ static long (*bpf_l4_csum_replace)(struct __sk_buff *skb, __u32 offset,
 static long (*bpf_skb_store_bytes)(struct __sk_buff *skb, __u32 offset,
                                    const void *from, __u32 len, __u64 flags) =
     (void *)BPF_FUNC_skb_store_bytes;
-static long (*bpf_probe_read_kernel)(void *dst, __u32 size,
-                                     const void *unsafe_ptr) = (void *)
-    BPF_FUNC_probe_read_kernel;
 static long (*bpf_probe_read)(void *dst, __u32 size, const void *unsafe_ptr) =
     (void *)BPF_FUNC_probe_read;
-static long (*bpf_probe_read_user)(void *dst, __u32 size,
-                                   const void *unsafe_ptr) = (void *)
-    BPF_FUNC_probe_read_user;
+// static long (*bpf_probe_read_kernel)(void *dst, __u32 size,
+//                                      const void *unsafe_ptr) = (void *)
+//     BPF_FUNC_probe_read_kernel;
+// static long (*bpf_probe_read_user)(void *dst, __u32 size,
+//                                    const void *unsafe_ptr) = (void *)
+//     BPF_FUNC_probe_read_user;
 static long (*bpf_perf_event_output)(void *ctx, struct bpf_elf_map *map,
                                      __u64 flags, void *data, __u64 size) =
     (void *)BPF_FUNC_perf_event_output;

@@ -29,7 +29,7 @@ struct pid
         refcount_t count;  // 4
         unsigned int level; // 4
         spinlock_t lock; // 4
-    // __pad 4 for align
+        // __pad 4 for align
         struct hlist_head tasks[PIDTYPE_MAX]; // 8 * 4
         struct hlist_head inodes; // 8
         wait_queue_head_t wait_pidfd; // 24
@@ -42,12 +42,12 @@ struct pid
 5.4-5.6
 struct pid
 {
-        refcount_t count;
-        unsigned int level;
-        struct hlist_head tasks[PIDTYPE_MAX];
-        wait_queue_head_t wait_pidfd;
-        struct rcu_head rcu;
-        struct upid numbers[1];
+        refcount_t count; // 4
+        unsigned int level; // 4
+        struct hlist_head tasks[PIDTYPE_MAX]; // 8 * 4
+        wait_queue_head_t wait_pidfd; // 24
+        struct rcu_head rcu; // 16
+        struct upid numbers[1]; // 16
 };
 
 #define XPID_OFFSET 72
@@ -77,7 +77,7 @@ __section("kretprobe/alloc_pid") int mb_alloc_pid(struct pt_regs *ctx)
 {
     struct xpid *p = (struct xpid *)ctx->rax; // todo support arm64
     int level = 0;
-    if (bpf_probe_read_kernel(&level, sizeof(level), &p->level)) {
+    if (bpf_probe_read(&level, sizeof(level), &p->level)) {
         printk("read level of pid error");
         return 0;
     }
@@ -86,14 +86,14 @@ __section("kretprobe/alloc_pid") int mb_alloc_pid(struct pt_regs *ctx)
         return 0;
     }
     int levelpid = 0;
-    if (bpf_probe_read_kernel(&levelpid, sizeof(levelpid),
-                              &p->numbers[WATCH_LEVEL].nr)) {
+    if (bpf_probe_read(&levelpid, sizeof(levelpid),
+                       &p->numbers[WATCH_LEVEL].nr)) {
         printk("read levelpid error");
         return 0;
     }
     int hostpid = levelpid;
     if (WATCH_LEVEL > 0) {
-        bpf_probe_read_kernel(&hostpid, sizeof(hostpid), &p->numbers[0].nr);
+        bpf_probe_read(&hostpid, sizeof(hostpid), &p->numbers[0].nr);
     }
     struct process_event e = {
         .op = 0,
@@ -105,6 +105,7 @@ __section("kretprobe/alloc_pid") int mb_alloc_pid(struct pt_regs *ctx)
 #if WATCH_LEVEL != 0
     bpf_map_update_elem(&process_level_pid, &hostpid, &levelpid, BPF_ANY);
 #endif
+    debugf("process %d created", levelpid);
     int ret = bpf_perf_event_output(ctx, &process_events, BPF_F_CURRENT_CPU, &e,
                                     sizeof(e));
     if (ret) {
@@ -129,6 +130,7 @@ __section("kprobe/do_exit") int mb_do_exit(struct pt_regs *ctx)
         printk("error delete hostpid: %d", hostpid);
     }
 #endif
+    debugf("process %d exit: %d", levelpid, exitcode);
     struct process_event e = {
         .op = 1,
         .hostpid = hostpid,
