@@ -29,6 +29,7 @@ const (
 	PairOriginalDst = "/sys/fs/bpf/pair_original_dst"
 	CgroupInfoMap   = "/sys/fs/bpf/cgroup_info_map"
 	SettingsMap     = "/sys/fs/bpf/settings"
+	ProcessEvents   = "/sys/fs/bpf/process_events"
 )
 
 var (

@@ -83,6 +83,22 @@ struct bpf_elf_map __section("maps") settings = {
     .max_elem = 256,
 };
 
+struct bpf_elf_map __section("maps") process_events = {
+    .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+    .size_key = sizeof(__u32),
+    .size_value = sizeof(__u32),
+    // .max_elem = 1,
+};
+
+#if WATCH_LEVEL != 0
+struct bpf_elf_map __section("maps") process_level_pid = {
+    .type = BPF_MAP_TYPE_HASH,
+    .size_key = sizeof(__u32),
+    .size_value = sizeof(__u32),
+    .max_elem = 65535,
+};
+#endif
+
 static inline __u32 *get_ztunnel_ip()
 {
     __u32 ztunnel_ip_key = ZTUNNEL_KEY;
