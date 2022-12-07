@@ -1,6 +1,8 @@
 package process
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -10,8 +12,9 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
 	"github.com/containernetworking/plugins/pkg/ns"
-	processwatcher "github.com/merbridge/process-watcher"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 
@@ -65,7 +68,6 @@ type podInfo struct {
 
 type processManager struct {
 	lock            sync.RWMutex
-	processWatcher  processwatcher.Watcher
 	cgroupMountPath string
 	pidCgroupMap    map[uint32]uint64
 	cgroupIPMap     map[uint64]string
@@ -92,7 +94,6 @@ func NewProcessManager(cgroupMountPath string) (ProcessManager, error) {
 		cgroupMountPath = p
 	}
 	return &processManager{
-		processWatcher:  processwatcher.NewProcessWatcher(),
 		cgroupMountPath: cgroupMountPath,
 		pidCgroupMap:    make(map[uint32]uint64),
 		cgroupIPMap:     make(map[uint64]string),
@@ -339,19 +340,43 @@ func (w *processManager) OnPodStatusChanged(ip string, isInMesh bool, isAmbient 
 	return nil
 }
 
+type Event struct {
+	Op       int32
+	HostPid  int32
+	Level    int32
+	LevelPid int32
+	ExitCode int32
+}
+
 func (w *processManager) Run(stop chan struct{}) error {
-	netns, err := ns.GetNS(config.HostProc + "/1/ns/net")
+	allocPidProg := ebpfs.GetAllocPidProg()
+	if allocPidProg == nil {
+		return fmt.Errorf("allocPidProg error")
+	}
+	doExitProg := ebpfs.GetDoExitProg()
+	if doExitProg == nil {
+		return fmt.Errorf("doExitProg error")
+	}
+	l, err := link.Kretprobe("alloc_pid", allocPidProg, &link.KprobeOptions{})
 	if err != nil {
 		return err
 	}
-	defer netns.Close()
-	err = netns.Do(func(nn ns.NetNS) error {
-		return w.processWatcher.Start()
-	})
+	defer l.Close()
+	l2, err := link.Kprobe("do_exit", doExitProg, &link.KprobeOptions{})
 	if err != nil {
-		log.Errorf("start processWatcher error: %v", err)
 		return err
 	}
+	defer l2.Close()
+	m := ebpfs.GetProcessEventsMap()
+	if m == nil {
+		return fmt.Errorf("error load ProcessEventsMap")
+	}
+	rd, err := perf.NewReader(m, os.Getpagesize())
+	if err != nil {
+		panic(err)
+	}
+	defer rd.Close()
+	eventChan := make(chan Event)
 	os.Setenv("HOST_PROC", config.HostProc)
 	ids, err := process.Pids()
 	if err != nil {
@@ -362,32 +387,46 @@ func (w *processManager) Run(stop chan struct{}) error {
 		err := w.onProcessAdded(uint32(pid))
 		log.Debugf("init exists pid %d error: %v", pid, err)
 	}
+	go func() {
+		for {
+			record, err := rd.Read()
+			if err != nil {
+				panic(err)
+			}
+
+			e := Event{}
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &e); err != nil {
+				log.Errorf("parsing perf event: %v\n", err)
+			}
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			eventChan <- e
+		}
+	}()
 	for {
 		select {
-		case e := <-w.processWatcher.Events():
-			if e.Err != nil {
-				log.Errorf("received error from processWatcher: %v", err)
-				continue
-			}
-			switch e.GetType() {
-			case processwatcher.PROC_EVENT_FORK:
-				fork := e.GetFork()
-				pid := fork.ChildPid
-				err := w.onProcessAdded(uint32(pid))
+		case <-stop:
+			return nil
+		case e := <-eventChan:
+			switch e.Op {
+			case 0:
+				// fork
+				err := w.onProcessAdded(uint32(e.LevelPid))
 				if err != nil {
 					log.Debugf("onProcessFork error: %v", err)
 				}
-			case processwatcher.PROC_EVENT_EXIT:
-				e := e.GetExit()
-				pid := e.ProcessPid
-				err := w.onProcessExit(uint32(pid))
+			case 1:
+				// exit
+				err := w.onProcessExit(uint32(e.LevelPid))
 				if err != nil {
 					log.Debugf("onProcessExit error: %v", err)
 				}
+			default:
+				log.Errorf("got unexpected event: %+v", e)
 			}
-		case <-stop:
-			w.processWatcher.Stop()
-			return nil
 		}
 	}
 }

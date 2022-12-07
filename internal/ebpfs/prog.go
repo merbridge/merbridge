@@ -74,9 +74,33 @@ func UnLoadMBProgs() error {
 }
 
 var (
-	ingress *ebpf.Program
-	egress  *ebpf.Program
+	ingress  *ebpf.Program
+	egress   *ebpf.Program
+	allocPid *ebpf.Program
+	doExit   *ebpf.Program
 )
+
+func GetAllocPidProg() *ebpf.Program {
+	if allocPid == nil {
+		p, err := ebpf.LoadPinnedProgram("/sys/fs/bpf/mb_process/kretprobe_alloc_pid", &ebpf.LoadPinOptions{})
+		if err != nil {
+			log.Errorf("init kretprobe_alloc_pid prog error: %v", err)
+		}
+		allocPid = p
+	}
+	return allocPid
+}
+
+func GetDoExitProg() *ebpf.Program {
+	if doExit == nil {
+		p, err := ebpf.LoadPinnedProgram("/sys/fs/bpf/mb_process/kprobe_do_exit", &ebpf.LoadPinOptions{})
+		if err != nil {
+			log.Errorf("init kprobe_do_exit prog error: %v", err)
+		}
+		doExit = p
+	}
+	return doExit
+}
 
 func GetTCIngressProg() *ebpf.Program {
 	if ingress == nil {
