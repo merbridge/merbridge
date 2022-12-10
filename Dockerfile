@@ -1,21 +1,6 @@
 # set default platform for docker build
 ARG BUILDPLATFORM=linux/amd64
-FROM --platform=$BUILDPLATFORM ubuntu:20.04 as compiler
-
-WORKDIR /app
-
-ARG DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update &&\
-    apt-get install -y git cmake make gcc python3 libncurses-dev gawk flex bison openssl \
-    libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
-
-RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
-
-RUN cd /app/linux/tools/bpf/bpftool && \
-    make && make install
-
-FROM --platform=$BUILDPLATFORM golang:1.19.3 as mbctl
+FROM --platform=$BUILDPLATFORM golang:1.19.2 as mbctl
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -33,7 +18,22 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/mbctl 
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
 
-FROM --platform=$BUILDPLATFORM ubuntu:20.04
+FROM ubuntu:20.04 as compiler
+
+WORKDIR /app
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update &&\
+    apt-get install -y git cmake make gcc python3 libncurses-dev gawk flex bison openssl \
+    libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
+
+RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
+
+RUN cd /app/linux/tools/bpf/bpftool && \
+    make && make install
+
+FROM ubuntu:20.04
 
 WORKDIR /app
 
