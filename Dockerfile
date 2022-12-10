@@ -18,7 +18,7 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/mbctl 
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
 
-FROM ubuntu:20.04 as compiler
+FROM ubuntu:22.04 as compiler
 
 WORKDIR /app
 
@@ -33,7 +33,7 @@ RUN git clone -b v5.4 https://github.com/torvalds/linux.git --depth 1
 RUN cd /app/linux/tools/bpf/bpftool && \
     make && make install
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 WORKDIR /app
 
