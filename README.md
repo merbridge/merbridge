@@ -1,5 +1,7 @@
 # merbridge
 
+[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6382/badge)](https://bestpractices.coreinfrastructure.org/projects/6382)
+
 Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.
 
 ## Usage
