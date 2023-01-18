@@ -51,8 +51,8 @@ spec:
       - operator: Exists
       volumes:
       - hostPath:
-          path: /proc
-        name: host-proc
+          path: /var/run
+        name: host-var-run
       - hostPath:
           path: /tmp
         name: tmp-dir
