@@ -6,7 +6,7 @@
 
 If you want to install merbridge locally with Helm:
 
-> Note that: excute these commands in root dir of merbridge
+> Note that: execute these commands in root dir of merbridge
 
 ### Install Merbridge on Istio
 
@@ -17,7 +17,7 @@ If you want to install merbridge locally with Helm:
 helm install -n istio-system merbridge helm
 ```
 
-After excuting this command, you will see that:
+After executing this command, you will see that:
 
 ```
 NAME: merbridge
@@ -54,7 +54,7 @@ helm install -n kuma-system --set mode=kuma merbridge helm
 
 ### Uninstall
 
-+ excute this command in the namespace where merbridge has been installed
++ execute this command in the namespace where merbridge has been installed
 + or add -n to specific the namespace where merbridge has been installed
 
 ``` bash
