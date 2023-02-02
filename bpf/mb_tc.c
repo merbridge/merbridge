@@ -24,7 +24,7 @@ limitations under the License.
 #include <linux/ipv6.h>
 #include <linux/pkt_cls.h>
 #include <linux/tcp.h>
-#import <stddef.h>
+#include <stddef.h>
 
 __section("classifier_ingress") int mb_tc_ingress(struct __sk_buff *skb)
 {
