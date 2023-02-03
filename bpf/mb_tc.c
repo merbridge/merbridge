@@ -99,7 +99,7 @@ __section("classifier_ingress") int mb_tc_ingress(struct __sk_buff *skb)
         if (tcph->dest == in_port) {
             // same node, already rewrite dest port by connect.
             // bypass.
-            debugf("tc ingress: already rewrited");
+            debugf("tc ingress: already rewritten");
             return TC_ACT_OK;
         }
         // ingress without mb_connect
@@ -149,7 +149,7 @@ __section("classifier_ingress") int mb_tc_ingress(struct __sk_buff *skb)
 
         bpf_l4_csum_replace(skb, csum_off, dst_port, in_port, sizeof(dst_port));
         bpf_skb_store_bytes(skb, dport_off, &in_port, sizeof(in_port), 0);
-        debugf("tc ingress: first rewrited");
+        debugf("tc ingress: first rewritten");
     } else {
         // request
         struct pair p;
@@ -180,7 +180,7 @@ __section("classifier_ingress") int mb_tc_ingress(struct __sk_buff *skb)
         __u16 dst_port = tcph->dest;
         bpf_l4_csum_replace(skb, csum_off, dst_port, in_port, sizeof(dst_port));
         bpf_skb_store_bytes(skb, dport_off, &in_port, sizeof(in_port), 0);
-        debugf("tc ingress: rewrited");
+        debugf("tc ingress: rewritten");
     }
     return TC_ACT_OK;
 }
@@ -286,7 +286,7 @@ __section("classifier_egress") int mb_tc_egress(struct __sk_buff *skb)
     __u16 src_port = origin->port;
     bpf_l4_csum_replace(skb, csum_off, in_port, src_port, sizeof(src_port));
     bpf_skb_store_bytes(skb, sport_off, &src_port, sizeof(src_port), 0);
-    debugf("tc egress: rewrited");
+    debugf("tc egress: rewritten");
     return TC_ACT_OK;
 }
 
