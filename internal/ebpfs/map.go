@@ -50,7 +50,7 @@ func GetLocalIPMap() *ebpf.Map {
 }
 
 func GetPairOriginalMap() *ebpf.Map {
-	if localPodIpsMap == nil {
+	if pairOriginIpsMap == nil {
 		_ = InitLoadPinnedMap()
 	}
 	return pairOriginIpsMap
