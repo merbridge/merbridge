@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/DaoCloud/ckube v1.1.0
-	github.com/cilium/ebpf v0.9.1
+	github.com/cilium/ebpf v0.10.0
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.1.1
 	github.com/florianl/go-tc v0.4.1
@@ -14,7 +14,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8
+	golang.org/x/sys v0.2.0
 	istio.io/api v0.0.0-20220922192441-63fec66805b5
 	istio.io/istio v0.0.0-20220923030445-cd2dc8636a65
 	k8s.io/api v0.25.1
