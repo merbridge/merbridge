@@ -232,7 +232,7 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
             }
             origin.flags |= 1;
         } else {
-            // can not get current pod ip, we use the lagecy mode.
+            // can not get current pod ip, we use the legacy mode.
 
             // u64 bpf_get_current_pid_tgid(void)
             // Return A 64-bit integer containing the current tgid and

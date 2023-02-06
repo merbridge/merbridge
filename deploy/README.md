@@ -68,7 +68,7 @@ If you want to update yamls in deploy directory, please make changes into helm c
 After that, remember to update generated yamls in `deploy` directory.
 
 ``` bash
-# update both istio and linkerd
+# update both istio, kuma and linkerd
 make helm
 # update istio deploy yaml
 make helm-istio
