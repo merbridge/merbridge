@@ -84,7 +84,7 @@ func createLocalPodController(client kubernetes.Interface) pods.Watcher {
 	}
 }
 
-const MaxItemLen = 12 // todo changeme
+const MaxItemLen = 20 // todo changeme
 
 type cidr struct {
 	net  uint32 // network order
