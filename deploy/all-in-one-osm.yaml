@@ -1,0 +1,127 @@
+---
+# Source: merbridge/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: merbridge
+  namespace: osm-system
+  labels:
+    app: merbridge
+---
+# Source: merbridge/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: merbridge
+  labels:
+    app: merbridge
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - get
+  - watch
+---
+# Source: merbridge/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: merbridge
+  labels:
+    app: merbridge
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: merbridge
+subjects:
+- kind: ServiceAccount
+  name: merbridge
+  namespace: osm-system
+---
+# Source: merbridge/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: merbridge
+  namespace: osm-system
+  labels:
+    app: merbridge
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: merbridge
+  template:
+    metadata:
+      labels:
+        app: merbridge
+    spec:
+      hostNetwork: true
+      containers:
+      - image: "ghcr.io/merbridge/merbridge:latest"
+        imagePullPolicy: Always
+        name: merbridge
+        args:
+        - /app/mbctl
+        - -m
+        - osm
+        - --use-reconnect=true
+        - --cni-mode=false
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - make
+              - -k
+              - clean
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 300m
+            memory: 200Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /sys/fs/cgroup
+            name: sys-fs-cgroup
+          - mountPath: /host/opt/cni/bin
+            name: cni-bin-dir
+          - mountPath: /host/etc/cni/net.d
+            name: cni-config-dir
+          - mountPath: /host/proc
+            name: host-proc
+          - mountPath: /host/var/run
+            name: host-var-run
+            mountPropagation: Bidirectional
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: merbridge
+      serviceAccountName: merbridge
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /sys/fs/cgroup
+        name: sys-fs-cgroup
+      - hostPath:
+          path: /proc
+        name: host-proc
+      - hostPath:
+          path: /opt/cni/bin
+        name: cni-bin-dir
+      - hostPath:
+          path: /etc/cni/net.d
+        name: cni-config-dir
+      - hostPath:
+          path: /var/run
+        name: host-var-run

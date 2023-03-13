@@ -52,6 +52,15 @@ helm install -n linkerd --set mode=linkerd merbridge helm
 helm install -n kuma-system --set mode=kuma merbridge helm
 ```
 
+### Install Merbridge on Osm/Osm-edge
+
++ set mode=osm to switch to osm/osm-edge mode
++ set namespace where merbridge is going to install by -n .
+
+``` bash
+helm install -n osm-system --set mode=osm merbridge helm
+```
+
 ### Uninstall
 
 + execute this command in the namespace where merbridge has been installed
@@ -76,6 +85,8 @@ make helm-istio
 make helm-linkerd
 # update kuma deploy yaml
 make helm-kuma
+# update osm deploy yaml
+make helm-osm
 # package helm charts
 make helm-package
 ```

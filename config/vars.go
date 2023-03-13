@@ -24,6 +24,7 @@ const (
 	ModeIstio       = "istio"
 	ModeLinkerd     = "linkerd"
 	ModeKuma        = "kuma"
+	ModeOsm         = "osm"
 	LocalPodIps     = "/sys/fs/bpf/local_pod_ips"
 	PairOriginalDst = "/sys/fs/bpf/pair_original_dst"
 )
