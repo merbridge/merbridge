@@ -35,6 +35,9 @@ osm install \
     --set=osm.certificateProvider.kind=tresor \
     --set=osm.image.pullPolicy=Always \
     --set=osm.enablePermissiveTrafficPolicy=true \
+    --set=osm.osmController.resource.requests.cpu=0.1 \
+    --set=osm.osmBootstrap.resource.requests.cpu=0.1 \
+    --set=osm.injector.resource.requests.cpu=0.1 \
     --verbose
 
 kubectl wait --for=condition=ready pod -n $osm_namespace -l app=osm-bootstrap --timeout=180s
