@@ -52,10 +52,10 @@ helm install -n linkerd --set mode=linkerd merbridge helm
 helm install -n kuma-system --set mode=kuma merbridge helm
 ```
 
-### Install Merbridge on Osm/Osm-edge
+### Install Merbridge on OSM/OSM-Edge
 
-+ set mode=osm to switch to osm/osm-edge mode
-+ set namespace where merbridge is going to install by -n .
++ Set `mode=osm` to switch to [OSM](https://github.com/openservicemesh/osm)/[OSM-Edge](https://github.com/flomesh-io/osm-edge) mode
++ Specify a namespace where you want to install Merbridge using `-n`
 
 ``` bash
 helm install -n osm-system --set mode=osm merbridge helm
