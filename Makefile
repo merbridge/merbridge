@@ -43,6 +43,10 @@ helm-istio:
 helm-kuma:
 	helm template --set-string "mode=kuma" -n "kuma-system" merbridge helm > deploy/all-in-one-kuma.yaml
 
+# generate merbridge on osm deploy templates
+helm-osm:
+	helm template --set-string "mode=osm" --set-string "use-reconnect=true" -n "osm-system" merbridge helm > deploy/all-in-one-osm.yaml
+
 # package helm release
 helm-package:
 	helm package helm

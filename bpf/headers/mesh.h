@@ -19,6 +19,7 @@ limitations under the License.
 #define ISTIO 1
 #define LINKERD 2
 #define KUMA 3
+#define OSM 4
 
 #ifndef MESH
 #define MESH 1
@@ -82,6 +83,29 @@ static const __u32 envoy_ip6[4] = {0, 0, 0, 6 << 24};
 
 #ifndef SIDECAR_USER_ID
 #define SIDECAR_USER_ID 5678
+#endif
+
+#ifndef DNS_CAPTURE_PORT
+#define DNS_CAPTURE_PORT 15053
+#endif
+
+// 127.0.0.6 (network order)
+static const __u32 envoy_ip = 127 + (6 << 24);
+// ::6 (network order)
+static const __u32 envoy_ip6[4] = {0, 0, 0, 6 << 24};
+
+#elif MESH == OSM
+
+#ifndef OUT_REDIRECT_PORT
+#define OUT_REDIRECT_PORT 15001
+#endif
+
+#ifndef IN_REDIRECT_PORT
+#define IN_REDIRECT_PORT 15003
+#endif
+
+#ifndef SIDECAR_USER_ID
+#define SIDECAR_USER_ID 1500
 #endif
 
 #ifndef DNS_CAPTURE_PORT
