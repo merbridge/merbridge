@@ -44,3 +44,10 @@ func IsKumaInjectedSidecar(pod *v1.Pod) bool {
 	}
 	return false
 }
+
+func IsOsmInjectedSidecar(pod *v1.Pod) bool {
+	if _, found := pod.Labels["osm-proxy-uuid"]; found {
+		return true
+	}
+	return false
+}

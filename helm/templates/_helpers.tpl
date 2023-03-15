@@ -64,7 +64,7 @@ Merbridge args command
 - /app/mbctl
 - -m
 - {{ .Values.mode }}
-- --use-reconnect={{ if or (eq .Values.mode "istio") (eq .Values.mode "kuma") }}true{{ else }}false{{ end }}
+- --use-reconnect={{ if or (eq .Values.mode "istio") (eq .Values.mode "kuma") (eq .Values.mode "osm") }}true{{ else }}false{{ end }}
 - --cni-mode={{ .Values.cniMode }}
 {{- if ne .Values.mountPath.proc "/host/proc" }}
 - --host-proc={{ .Values.mountPath.proc }}

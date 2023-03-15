@@ -30,9 +30,9 @@ func NewOptions() error {
 		log.SetLevel(log.DebugLevel)
 	}
 	switch config.Mode {
-	case config.ModeIstio, config.ModeLinkerd, config.ModeKuma:
+	case config.ModeIstio, config.ModeLinkerd, config.ModeKuma, config.ModeOsm:
 		return nil
 	default:
-		return fmt.Errorf("invalid mode %q, current only support istio, linkerd and kuma", config.Mode)
+		return fmt.Errorf("invalid mode %q, current only support istio, linkerd, kuma and osm", config.Mode)
 	}
 }

@@ -20,9 +20,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/merbridge/merbridge/config"
@@ -74,6 +76,8 @@ func ignore(conf *Config, k8sArgs *plugin.K8sArgs) bool {
 		switch conf.Args.ServiceMeshMode {
 		case config.ModeKuma:
 			return ignorePodKuma(ns, name, pi)
+		case config.ModeOsm:
+			return ignorePodOsm(ns, name, pi)
 		default:
 			return ignorePodIstio(ns, name, pi)
 		}
@@ -107,6 +111,51 @@ func ignorePodKuma(namespace, name string, pod *plugin.PodInfo) bool {
 
 	log.Infof("Pod %s/%s excluded because it only has 1 container", namespace, name)
 
+	return true
+}
+
+func isAnnotatedForOsmInjection(annotations map[string]string) (exists bool, enabled bool, err error) {
+	inject, ok := annotations[`openservicemesh.io/sidecar-injection`]
+	if !ok {
+		return
+	}
+	exists = true
+	switch strings.ToLower(inject) {
+	case "enabled", "yes", "true":
+		enabled = true
+	case "disabled", "no", "false":
+		enabled = false
+	default:
+		err = fmt.Errorf("invalid annotation value for key %q: %s", `openservicemesh.io/sidecar-injection`, inject)
+	}
+	return
+}
+
+func ignorePodOsm(namespace, name string, pod *plugin.PodInfo) bool {
+	if len(pod.Containers) > 1 {
+		// Check if the pod is annotated for injection
+		if podInjectAnnotationExists, injectEnabled, err := isAnnotatedForOsmInjection(pod.Annotations); err != nil {
+			log.Warnf("Pod %s/%s error determining sidecar-injection annotation", namespace, name)
+			return true
+		} else if podInjectAnnotationExists && !injectEnabled {
+			log.Infof("Pod %s/%s excluded due to sidecar-injection annotation", namespace, name)
+			return true
+		}
+
+		sidecarExists := false
+		for _, container := range pod.Containers {
+			if container == `sidecar` || container == `envoy` {
+				sidecarExists = true
+				break
+			}
+		}
+		if !sidecarExists {
+			log.Infof("Pod %s/%s excluded due to not existing sidecar", namespace, name)
+			return true
+		}
+		return false
+	}
+	log.Infof("Pod %s/%s excluded because it only has %d containers", namespace, name, len(pod.Containers))
 	return true
 }
 

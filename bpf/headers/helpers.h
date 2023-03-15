@@ -254,7 +254,7 @@ struct cgroup_info {
     __u16 detected_flags;
 };
 
-#define MAX_ITEM_LEN 10
+#define MAX_ITEM_LEN 20
 
 struct cidr {
     __u32 net; // network order
