@@ -44,13 +44,13 @@ static inline int get_current_cgroup_info(void *ctx,
         struct bpf_sock_tuple tuple = {};
         tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
         tuple.ipv4.daddr = 0;
-        struct bpf_sock *s = bpf_sk_lookup_tcp(
-            ctx, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0);
+        struct bpf_sock *s = bpf_sk_lookup_tcp(ctx, &tuple, sizeof(tuple.ipv4),
+                                               BPF_F_CURRENT_NETNS, 0);
         if (s) {
             __u32 curr_ip_mark = s->mark;
             bpf_sk_release(s);
-            __u32 *ip = (__u32 *)bpf_map_lookup_elem(&mark_pod_ips_map,
-                                                     &curr_ip_mark);
+            __u32 *ip =
+                (__u32 *)bpf_map_lookup_elem(&mark_pod_ips_map, &curr_ip_mark);
             if (!ip) {
                 debugf("get ip for mark 0x%x error", curr_ip_mark);
             } else {
