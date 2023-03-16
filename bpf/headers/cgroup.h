@@ -40,30 +40,27 @@ static inline int get_current_cgroup_info(void *ctx,
             .flags = 0,
             .detected_flags = 0,
         };
-        // not checked ever
-        if (!is_port_listen_current_ns(ctx, ip_zero, OUT_REDIRECT_PORT)) {
+        // get ip addresses of current pod/ns.
+        struct bpf_sock_tuple tuple = {};
+        tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
+        tuple.ipv4.daddr = 0;
+        struct bpf_sock *s = bpf_sk_lookup_tcp(
+            ctx, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0);
+        if (s) {
+            __u32 curr_ip_mark = s->mark;
+            bpf_sk_release(s);
+            __u32 *ip = (__u32 *)bpf_map_lookup_elem(&mark_pod_ips_map,
+                                                     &curr_ip_mark);
+            if (!ip) {
+                debugf("get ip for mark 0x%x error", curr_ip_mark);
+            } else {
+                set_ipv6(_default.cgroup_ip, ip); // network order
+            }
+            // in mesh
+            _default.is_in_mesh = 1;
+        } else {
             // not in mesh
             _default.is_in_mesh = 0;
-            debugf("can not get port listen for cgroup(%ld)", cgroup_id);
-        } else {
-            _default.is_in_mesh = 1;
-            // get ip addresses of current pod/ns.
-            struct bpf_sock_tuple tuple = {};
-            tuple.ipv4.dport = bpf_htons(SOCK_IP_MARK_PORT);
-            tuple.ipv4.daddr = 0;
-            struct bpf_sock *s = bpf_sk_lookup_tcp(
-                ctx, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0);
-            if (s) {
-                __u32 curr_ip_mark = s->mark;
-                bpf_sk_release(s);
-                __u32 *ip = (__u32 *)bpf_map_lookup_elem(&mark_pod_ips_map,
-                                                         &curr_ip_mark);
-                if (!ip) {
-                    debugf("get ip for mark 0x%x error", curr_ip_mark);
-                } else {
-                    set_ipv6(_default.cgroup_ip, ip); // network order
-                }
-            }
         }
         if (bpf_map_update_elem(&cgroup_info_map, &cgroup_id, &_default,
                                 BPF_ANY)) {
