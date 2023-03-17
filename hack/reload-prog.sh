@@ -20,7 +20,7 @@ usage() {
 			OPTIONS := {-v}
 				-v : Enable verbose mode. It prints more information for debugging the failure of loading
 
-			MODE := {istio | kuma}
+			MODE := {istio | kuma | osm}
 			NODE := {all | <node where ebpf programs needs reload>}
 			EBPFPROG := {all | bind | connect | sockops | getsock | redir | sendmsg | recvmsg | xdp}
 
@@ -44,7 +44,10 @@ usage() {
 
 			Load bind eBPF program on all worker nodes for kuma service mesh
 			./reload-prog.sh -m kuma -n all -p bind
-	
+
+      Load bind eBPF program on all worker nodes for osm/osm-edge service mesh
+      ./reload-prog.sh -m osm -n all -p bind
+
 			Enable verbose mode of the script
 			./reload-prog.sh -v -n worker-3 -p xdp		"
 	exit 1
@@ -90,6 +93,7 @@ fi
 case $mode in
   istio ) mesh_number=1; namespace="istio-system";;
   kuma )  mesh_number=3; namespace="kuma-system";;
+  osm )  mesh_number=3; namespace="osm-system";;
 esac
 
 if ! command -v kubectl &> /dev/null && command -v clang &> /dev/null && command -v bpftool &> /dev/null

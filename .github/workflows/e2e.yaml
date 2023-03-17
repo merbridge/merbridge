@@ -236,3 +236,60 @@ jobs:
         [ "$(sudo cat /tmp/trace-log | grep 'bytes with eBPF successfully')" = "" ] && (echo eBPF redirect progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 12)
         [ "$(sudo cat /tmp/trace-log | grep 'successfully deal DNS redirect query')" = "" ] && (echo DNS Proxy not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 13)
         sudo rm -f /tmp/trace-log
+
+  # osm
+
+  osm-e2e:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'needs-e2e-test') }}
+    env:
+      OSM_VERSION: 'v1.2.3'
+      KIND_VERSION: v0.16.0
+      KERNEL_VERSION: v5.4
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - name: install bpftool
+        run: |
+          sudo bash ./scripts/build-bpftool.sh
+      - name: setup kind cluster
+        run: |
+          ./scripts/setup-kind.sh
+      - name: try load and unload
+        run: |
+          uname -a
+          make load
+          make attach
+          make clean
+      - name: install osm
+        run: |
+          bash ./scripts/install-osm.sh
+      - name: deploy test apps
+        run: |
+          kubectl create namespace e2e-test
+          osm namespace add e2e-test
+          kubectl apply -n e2e-test -f https://raw.githubusercontent.com/istio/istio/master/samples/sleep/sleep.yaml
+          kubectl apply -n e2e-test -f https://raw.githubusercontent.com/istio/istio/master/samples/helloworld/helloworld.yaml
+          while true; do [ "$(kubectl get po -l app=sleep -n e2e-test | grep '2/2')" = "" ] || break && (echo waiting for sleep app ready; sleep 3); done
+          while true; do [ "$(kubectl get po -l app=helloworld -n e2e-test | grep '2/2')" = "" ] || break && (echo waiting for helloworld app ready; sleep 3); done
+      - name: test connect without Merbridge
+        run: |
+          kubectl exec $(kubectl get po -l app=sleep -n e2e-test -o=jsonpath='{..metadata.name}') -n e2e-test -c sleep -- curl -s -v helloworld:5000/hello
+      - name: install merbridge
+        run: |
+          nohup go run -exec sudo ./app/main.go -k -m osm -d > mbctl.log &
+          while true; do [ "$(cat mbctl.log | grep 'Pod Watcher Ready')" = "" ] || break && (echo waiting for mbctl watcher ready; sleep 3); done
+      - name: test connect with Merbridge
+        run: |
+          set -x
+          kubectl exec $(kubectl get po -l app=sleep -n e2e-test -o=jsonpath='{..metadata.name}') -n e2e-test -c sleep -- curl -s -v helloworld:5000/hello
+          sudo cat /sys/kernel/debug/tracing/trace > /tmp/trace-log
+          # check if eBPF works
+          [ "$(sudo cat /tmp/trace-log | grep 'from user container')" = "" ] && (echo eBPF progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 11)
+          [ "$(sudo cat /tmp/trace-log | grep 'bytes with eBPF successfully')" = "" ] && (echo eBPF redirect progs not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 12)
+          #[ "$(sudo cat /tmp/trace-log | grep 'successfully deal DNS redirect query')" = "" ] && (echo DNS Proxy not work; sudo cat /tmp/trace-log; sudo bpftool prog; sudo bpftool map; cat mbctl.log; sudo ps -ef; exit 13)
+          sudo rm -f /tmp/trace-log

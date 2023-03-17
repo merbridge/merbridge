@@ -14,8 +14,18 @@ else ifeq ($(MESH_MODE),linkerd)
     MACROS:= $(MACROS) -DMESH=2
 else ifeq ($(MESH_MODE),kuma)
     MACROS:= $(MACROS) -DMESH=3
+else ifeq ($(MESH_MODE),osm)
+    MACROS:= $(MACROS) -DMESH=4
 else
 $(error MESH_MODE $(MESH_MODE) isn't supported)
+endif
+
+CNI_MODE ?= false
+
+ifeq ($(CNI_MODE),true)
+	MACROS:= $(MACROS) -DENABLE_CNI_MODE=1
+else
+	MACROS:= $(MACROS) -DENABLE_CNI_MODE=0
 endif
 
 ENABLE_IPV4 ?= true
@@ -91,7 +101,7 @@ load-map-cookie_original_dst:
 	[ -f $(PROG_MOUNT_PATH)/cookie_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/cookie_original_dst type lru_hash key 8 value 24 entries 65535 name cookie_original_dst
 
 load-map-local_pod_ips:
-	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 16 value 244 entries 1024 name local_pod_ips
+	[ -f $(PROG_MOUNT_PATH)/local_pod_ips ] || sudo bpftool map create $(PROG_MOUNT_PATH)/local_pod_ips type hash key 16 value 484 entries 1024 name local_pod_ips
 
 load-map-process_ip:
 	[ -f $(PROG_MOUNT_PATH)/process_ip ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_ip type lru_hash key 4 value 4 entries 1024 name process_ip

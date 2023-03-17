@@ -84,7 +84,7 @@ func createLocalPodController(client kubernetes.Interface) pods.Watcher {
 	}
 }
 
-const MaxItemLen = 10 // todo changeme
+const MaxItemLen = 20 // todo changeme
 
 type cidr struct {
 	net  uint32 // network order
@@ -117,6 +117,9 @@ func addFunc(obj interface{}) {
 	if config.Mode == config.ModeKuma && !pods.IsKumaInjectedSidecar(pod) {
 		return
 	}
+	if config.Mode == config.ModeOsm && !pods.IsOsmInjectedSidecar(pod) {
+		return
+	}
 	log.Debugf("got pod updated %s/%s", pod.Namespace, pod.Name)
 
 	_ip, _ := linux.IP2Linux(pod.Status.PodIP)
@@ -124,6 +127,8 @@ func addFunc(obj interface{}) {
 	p := podConfig{}
 	if config.Mode == config.ModeKuma {
 		parsePodConfigFromAnnotationsKuma(pod.Annotations, &p)
+	} else if config.Mode == config.ModeOsm {
+		parsePodConfigFromAnnotationsOsm(pod.Annotations, &p)
 	} else {
 		parsePodConfigFromAnnotations(pod.Annotations, &p)
 	}
@@ -278,6 +283,86 @@ func parsePodConfigFromAnnotationsKuma(annotations map[string]string, pod *podCo
 					break
 				}
 				pod.excludeOutPorts[i] = p
+			}
+		}
+	}
+}
+
+func parsePodConfigFromAnnotationsOsm(annotations map[string]string, pod *podConfig) {
+	statusPort := 15021
+	if v, ok := annotations["openservicemesh.io/port"]; ok {
+		vv, err := strconv.ParseUint(v, 10, 16)
+		if err == nil {
+			statusPort = int(vv)
+		}
+	}
+	pod.statusPort = uint16(statusPort)
+	excludeInboundPorts := []uint16{15000, 15001, 15003, 15010, 15021, 15050, 15128, 15901, 15902, 15903, 15904}
+	if v, ok := annotations["openservicemesh.io/inbound-port-exclusion-list"]; ok {
+		excludeInboundPorts = append(excludeInboundPorts, getPortsFromString(v)...)
+	}
+	if len(excludeInboundPorts) > 0 {
+		for i, p := range excludeInboundPorts {
+			if i >= MaxItemLen {
+				break
+			}
+			pod.excludeInPorts[i] = p
+		}
+	}
+	if v, ok := annotations["openservicemesh.io/outbound-port-exclusion-list"]; ok {
+		excludeOutboundPorts := getPortsFromString(v)
+		if len(excludeOutboundPorts) > 0 {
+			for i, p := range excludeOutboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.excludeOutPorts[i] = p
+			}
+		}
+	}
+
+	if v, ok := annotations["openservicemesh.io/inbound-port-inclusion-list"]; ok {
+		includeInboundPorts := getPortsFromString(v)
+		if len(includeInboundPorts) > 0 {
+			for i, p := range includeInboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.includeInPorts[i] = p
+			}
+		}
+	}
+	if v, ok := annotations["openservicemesh.io/outbound-port-inclusion-list"]; ok {
+		includeOutboundPorts := getPortsFromString(v)
+		if len(includeOutboundPorts) > 0 {
+			for i, p := range includeOutboundPorts {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.includeOutPorts[i] = p
+			}
+		}
+	}
+
+	if v, ok := annotations["openservicemesh.io/outbound-ip-range-exclusion-list"]; ok {
+		excludeOutboundIPRanges := getIPRangesFromString(v)
+		if len(excludeOutboundIPRanges) > 0 {
+			for i, p := range excludeOutboundIPRanges {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.excludeOutRanges[i] = p
+			}
+		}
+	}
+	if v, ok := annotations["openservicemesh.io/outbound-ip-range-inclusion-list"]; ok {
+		includeOutboundIPRanges := getIPRangesFromString(v)
+		if len(includeOutboundIPRanges) > 0 {
+			for i, p := range includeOutboundIPRanges {
+				if i >= MaxItemLen {
+					break
+				}
+				pod.includeOutRanges[i] = p
 			}
 		}
 	}

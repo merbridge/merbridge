@@ -25,7 +25,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
+func LoadMBProgs(meshMode string, useReconnect, useCniMode, debug bool) error {
 	if os.Getuid() != 0 {
 		return fmt.Errorf("root user in required for this process or container")
 	}
@@ -37,6 +37,9 @@ func LoadMBProgs(meshMode string, useReconnect bool, debug bool) error {
 	}
 	if useReconnect {
 		cmd.Env = append(cmd.Env, "USE_RECONNECT=1")
+	}
+	if useCniMode {
+		cmd.Env = append(cmd.Env, "ENABLE_CNI_MODE=1")
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
