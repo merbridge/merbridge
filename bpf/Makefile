@@ -20,6 +20,14 @@ else
 $(error MESH_MODE $(MESH_MODE) isn't supported)
 endif
 
+CNI_MODE ?= false
+
+ifeq ($(CNI_MODE),true)
+	MACROS:= $(MACROS) -DENABLE_CNI_MODE=1
+else
+	MACROS:= $(MACROS) -DENABLE_CNI_MODE=0
+endif
+
 ENABLE_IPV4 ?= true
 ENABLE_IPV6 ?= false
 

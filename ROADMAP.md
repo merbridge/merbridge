@@ -11,6 +11,7 @@
 - [ ] Ambient Mesh Support
 - [ ] Lower kernel required (5.4? limited)
 - [ ] Optimize prog performance
+- [X] OSM/OSM-Edge Support
 
 ## Control Plane
 - [ ] Metrics
