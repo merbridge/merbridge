@@ -14,7 +14,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.2
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.6.0
 	istio.io/api v0.0.0-20220922192441-63fec66805b5
 	istio.io/istio v0.0.0-20220923030445-cd2dc8636a65
 	k8s.io/api v0.25.1
