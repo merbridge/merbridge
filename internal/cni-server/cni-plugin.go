@@ -35,7 +35,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
-	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/florianl/go-tc"
 	"github.com/florianl/go-tc/core"
 	log "github.com/sirupsen/logrus"
@@ -44,6 +43,7 @@ import (
 
 	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/internal/ebpfs"
+	"github.com/merbridge/merbridge/internal/ns"
 	"github.com/merbridge/merbridge/pkg/linux"
 )
 
@@ -231,7 +231,7 @@ func (s *server) listenConfig(addr net.Addr, netns string) net.ListenConfig {
 				if operr != nil {
 					return
 				}
-				operr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_MARK, int(key))
+				operr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, ns.SoMark, int(key))
 			}); err != nil {
 				return err
 			}
