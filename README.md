@@ -1,6 +1,7 @@
 # merbridge
 
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6382/badge)](https://bestpractices.coreinfrastructure.org/projects/6382)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmerbridge%2Fmerbridge.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmerbridge%2Fmerbridge?ref=badge_shield)
 
 Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.
 
@@ -74,6 +75,9 @@ Made with [contrib.rocks](https://contrib.rocks).
 Copyright 2022 the Merbridge Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmerbridge%2Fmerbridge.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmerbridge%2Fmerbridge?ref=badge_large)
 
 ## Landscapes
 
