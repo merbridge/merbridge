@@ -1,3 +1,3 @@
-### Contributor Code of Conduct
+# Contributor Code of Conduct
 
 Merbridge follows the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/main/code-of-conduct.md).

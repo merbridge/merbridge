@@ -9,52 +9,56 @@ Use eBPF to speed up your Service Mesh like crossing an Einstein-Rosen Bridge.
 
 ### Install
 
-You just only need to run the following command to your Istio cluster to get eBPF to speed up Istio:
+You just only need to run the following command on your Istio cluster to get eBPF to speed up Istio:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one.yaml
 ```
 
-Or on Linkerd cluster:
+Or on a Linkerd cluster:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-linkerd.yaml
 ```
 
-Or on Kuma cluster:
+Or on a Kuma cluster:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-kuma.yaml
 ```
 
-Or on [OSM](https://github.com/openservicemesh/osm)/[OSM-Edge](https://github.com/flomesh-io/osm-edge) cluster:
+Or on an [OSM](https://github.com/openservicemesh/osm)/[OSM-Edge](https://github.com/flomesh-io/osm-edge) cluster:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-osm.yaml
 ```
 
-> Note: currently only works on Linux kernel >= 5.7, run `uname -r` check your kernel version before install merbridge.
+> Note: It currently only works on Linux kernel >= 5.7, run `uname -r` to check your kernel version before installing Merbridge.
 
 If you want to install Merbridge by `Helm`, read the guidelines: [Deploy Merbridge with Helm](deploy/).
 
 ### Uninstall
 
 - Istio:
+
 ```bash
 kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one.yaml
 ```
 
 - Linkerd:
+
 ```bash
 kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-linkerd.yaml
 ```
 
 - Kuma:
+
 ```bash
 kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-kuma.yaml
 ```
 
 - [OSM](https://github.com/openservicemesh/osm)/[OSM-Edge](https://github.com/flomesh-io/osm-edge):
+
 ```bash
 kubectl delete -f https://raw.githubusercontent.com/merbridge/merbridge/main/deploy/all-in-one-osm.yaml
 ```
@@ -72,10 +76,10 @@ Join the [Merbridge slack](https://join.slack.com/t/merbridge/shared_invite/zt-1
 Made with [contrib.rocks](https://contrib.rocks).
 
 ## License
-Copyright 2022 the Merbridge Authors. All rights reserved.
+
+Copyright 2023 the Merbridge Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0.
-
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmerbridge%2Fmerbridge.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmerbridge%2Fmerbridge?ref=badge_large)
 
