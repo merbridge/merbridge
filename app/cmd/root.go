@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -40,6 +41,9 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := ebpfs.LoadMBProgs(config.Mode, config.UseReconnect, config.EnableCNI, config.Debug); err != nil {
 			return fmt.Errorf("failed to load ebpf programs: %v", err)
+		}
+		if err := rlimit.RemoveMemlock(); err != nil {
+			return fmt.Errorf("remove memlock error: %v", err)
 		}
 
 		stop := make(chan struct{}, 1)
