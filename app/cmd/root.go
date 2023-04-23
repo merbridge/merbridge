@@ -23,10 +23,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/cilium/ebpf/rlimit"
 	"github.com/merbridge/merbridge/config"
 	"github.com/merbridge/merbridge/controller"
 	cniserver "github.com/merbridge/merbridge/internal/cni-server"
