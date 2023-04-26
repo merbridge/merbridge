@@ -1,6 +1,6 @@
 # Merbridge Maintainers
 
-| Name | Github ID | Email | 
+| Name | Github ID | Email |
 | --- | --- | --- |
 | Kebe Liu | [kebe7jun](https://github.com/kebe7jun) | mail@kebe7jun.com |
 | Wenqing Dai | [dddddai](https://github.com/dddddai) | dddwq@foxmail.com |
