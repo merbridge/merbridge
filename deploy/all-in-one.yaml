@@ -75,6 +75,10 @@ spec:
         env:
         - name: WATCH_LEVEL
           value: '0'
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         lifecycle:
           preStop:
             exec:

@@ -83,9 +83,13 @@ func RunLocalPodController(client kubernetes.Interface, pm process.ProcessManage
 }
 
 func createLocalPodController(client kubernetes.Interface) pods.Watcher {
-	localName, err := os.Hostname()
-	if err != nil {
-		panic(err)
+	var localName string
+	var err error
+	if localName = os.Getenv("NODE_NAME"); localName == "" {
+		localName, err = os.Hostname()
+		if err != nil {
+			panic(err)
+		}
 	}
 	return pods.Watcher{
 		Client:          client,
