@@ -33,7 +33,8 @@ func (s *server) PodCreated(w http.ResponseWriter, req *http.Request) {
 	}
 	args := skel.CmdArgs{}
 	err = json.Unmarshal(bs, &args)
-	log.Infof("cni called create with args: %+v", args)
+	log.Infof("cni called create with args: ContainerID=%s, Netns=%s, IfName=%s, Path=%s, StdinData=%s\n",
+		args.ContainerID, args.Netns, args.IfName, args.Path, string(args.StdinData))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
@@ -55,7 +56,8 @@ func (s *server) PodDeleted(w http.ResponseWriter, req *http.Request) {
 	}
 	args := skel.CmdArgs{}
 	err = json.Unmarshal(bs, &args)
-	log.Infof("cni called delete with args: %+v", args)
+	log.Infof("cni called delete with args: ContainerID=%s, Netns=%s, IfName=%s, Path=%s, StdinData=%s\n",
+		args.ContainerID, args.Netns, args.IfName, args.Path, string(args.StdinData))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
