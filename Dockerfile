@@ -14,9 +14,9 @@ RUN go mod download
 
 ADD . .
 
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -ldflags "-s -w" -o ./dist/mbctl ./app/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -ldflags "-s -w" -o ./dist/merbridge-cni ./app/cni/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -ldflags "-s -w" -o ./dist/merbridge-fd-back ./app/fd-back/main.go
 
 FROM ubuntu:20.04 as compiler
 
