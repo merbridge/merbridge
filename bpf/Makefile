@@ -196,12 +196,13 @@ ifeq ($(ENABLE_IPV6),true)
 endif
 	sudo rm -rf $(PROG_MOUNT_PATH)/connect
 
-load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_original_dst load-map-sock_pair_map
+load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_original_dst load-map-sock_pair_map load-map-settings
 	sudo bpftool -m prog load mb_sockops.o $(PROG_MOUNT_PATH)/sockops \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
 		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst \
-		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map
+		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map \
+		map name settings pinned $(PROG_MOUNT_PATH)/settings
 
 attach-sockops:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) sock_ops pinned $(PROG_MOUNT_PATH)/sockops

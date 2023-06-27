@@ -42,7 +42,6 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
     p.sport = ctx->sk->dst_port;
     struct origin_info *origin;
     switch (ctx->sk->family) {
-#if ENABLE_IPV4
     case 2: // ipv4
         set_ipv4(p.dip, ctx->sk->src_ip4);
         set_ipv4(p.sip, ctx->sk->dst_ip4);
@@ -72,8 +71,6 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             debugf("can not get original dst");
         }
         break;
-#endif
-#if ENABLE_IPV6
     case 10: // ipv6
         set_ipv6(p.dip, ctx->sk->src_ip6);
         set_ipv6(p.sip, ctx->sk->dst_ip6);
@@ -98,7 +95,6 @@ __section("cgroup/getsockopt") int mb_get_sockopt(struct bpf_sockopt *ctx)
             set_ipv6(sa->sin6_addr.in6_u.u6_addr32, origin->ip);
         }
         break;
-#endif
     }
     return 1;
 }

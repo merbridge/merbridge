@@ -219,7 +219,7 @@ func (w *processManager) writePodInfoToCgroupMap(cgroupInode uint64, pod podInfo
 func (w *processManager) onProcessAdded(pid uint32) error {
 	cgroup, err := getProcessCgroup(pid)
 	if err != nil {
-		log.Errorf("get process %d cgroup error: %v", pid, err)
+		log.Debugf("get process %d cgroup error: %v", pid, err)
 		return err
 	}
 	if !isInKube(cgroup) {

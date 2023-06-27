@@ -105,7 +105,6 @@ __section("kretprobe/alloc_pid") int mb_alloc_pid(struct pt_regs *ctx)
 #if WATCH_LEVEL != 0
     bpf_map_update_elem(&process_level_pid, &hostpid, &levelpid, BPF_ANY);
 #endif
-    debugf("process %d created", levelpid);
     int ret = bpf_perf_event_output(ctx, &process_events, BPF_F_CURRENT_CPU, &e,
                                     sizeof(e));
     if (ret) {
@@ -118,7 +117,6 @@ __section("kprobe/do_exit") int mb_do_exit(struct pt_regs *ctx)
 {
     int exitcode = ctx->rdi;                        // todo support arm64
     int hostpid = bpf_get_current_pid_tgid() >> 32; // tgid
-    debugf("process %d exit: %d", hostpid, exitcode);
     int levelpid = hostpid;
 #if WATCH_LEVEL != 0
     void *p = bpf_map_lookup_elem(&process_level_pid, &hostpid);
@@ -130,7 +128,6 @@ __section("kprobe/do_exit") int mb_do_exit(struct pt_regs *ctx)
         printk("error delete hostpid: %d", hostpid);
     }
 #endif
-    debugf("process %d exit: %d", levelpid, exitcode);
     struct process_event e = {
         .op = 1,
         .hostpid = hostpid,

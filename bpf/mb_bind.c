@@ -39,6 +39,8 @@ __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
             debugf("can not get ztunnel pod ip in bind");
             return 1;
         }
+        // ztunnel will bind the source pod ip to upstream,
+        // we will rollback this operation because we not support TPROXY mode.
         ctx->user_ip4 = ztunnel_ip[3];
         debugf("successfully rewrite ztunnel bind");
     }
