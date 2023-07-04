@@ -159,7 +159,8 @@ static inline __u32 get_ipv4(__u32 *ip) { return ip[3]; }
 static inline void set_ipv4(__u32 *dst, __u32 src)
 {
     memset(dst, 0, sizeof(__u32) * 2);
-    dst[2] = 0xffff0000; // https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
+    dst[2] =
+        0xffff0000; // https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
     dst[3] = src;
 }
 

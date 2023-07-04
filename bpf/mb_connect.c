@@ -80,10 +80,6 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
     if (cg_info.flags & AMBIENT_MESH_FLAG) {
         __u32 dst_ip = ctx->user_ip4;
         __u64 cookie = bpf_get_socket_cookie_addr(ctx);
-        // app call others
-        debugf(
-            "call from ambient user container: cookie: %d, ip: %pI4, port: %d",
-            cookie, &dst_ip, bpf_htons(ctx->user_port));
 
         // we need redirect it to envoy.
         struct origin_info origin;
@@ -100,12 +96,11 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
             (cg_info.flags & ZTUNNEL_FLAG)) {
             // from ztunnel to others
             debugf("from ztunnel pod");
-            if (ctx->user_port == bpf_htons(15088)) {
-                debugf("ztunnel to self");
-                ctx->user_port = bpf_htons(15008);
-                ctx->user_ip4 = ztunnel_ip[3];
-            }
         } else {
+            // app call others
+            debugf("call from ambient user container: cookie: %d, ip: %pI4, "
+                   "port: %d",
+                   cookie, &dst_ip, bpf_htons(ctx->user_port));
             ctx->user_ip4 = ztunnel_ip[3];
             ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
             struct sockaddr_in addr = {

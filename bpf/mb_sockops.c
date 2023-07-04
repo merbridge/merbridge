@@ -65,8 +65,8 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
                skops->remote_ip4 == envoy_ip) {
         bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
     } else {
-        // ztunnel use zero copy, which may be conflict with bpf_msg_redirect_hash,
-        // so we ignore it now.
+        // ztunnel use zero copy, which may be conflict with
+        // bpf_msg_redirect_hash, so we ignore it now.
         // __u32 *ztunnel_ip = get_ztunnel_ip();
     }
     return 0;
