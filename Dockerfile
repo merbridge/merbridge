@@ -1,6 +1,6 @@
 # set default platform for docker build
 ARG BUILDPLATFORM=linux/amd64
-FROM --platform=$BUILDPLATFORM golang:1.20.5 as mbctl
+FROM --platform=$BUILDPLATFORM golang:1.20.7 as mbctl
 
 ARG TARGETOS
 ARG TARGETARCH
