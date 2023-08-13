@@ -22,6 +22,9 @@ spec:
         name: {{ .Values.fullname }}
         args:
         {{- include "merbridge.cmd.args" . | nindent 8 }}
+        env:
+        - name: WATCH_LEVEL
+          value: '{{ .Values.watchLevel }}'
         lifecycle:
           preStop:
             exec:

@@ -32,3 +32,4 @@ mountPath:
   varRun: /host/var/run
 dnsPolicy: ClusterFirst
 revisionHistoryLimit: 10
+watchLevel: 0

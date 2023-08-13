@@ -20,7 +20,6 @@ rules:
   - ""
   resources:
   - pods
-  - namespaces
   verbs:
   - list
   - get
@@ -62,16 +61,15 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: "ghcr.io/merbridge/merbridge:ambient"
+      - image: "ghcr.io/merbridge/merbridge:latest"
         imagePullPolicy: Always
         name: merbridge
         args:
-        - /app/mbctl 
+        - /app/mbctl
         - -m
         - istio
         - --use-reconnect=true
         - --cni-mode=false
-        - -d
         env:
         - name: WATCH_LEVEL
           value: '0'

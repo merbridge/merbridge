@@ -70,6 +70,9 @@ spec:
         - kuma
         - --use-reconnect=true
         - --cni-mode=false
+        env:
+        - name: WATCH_LEVEL
+          value: '0'
         lifecycle:
           preStop:
             exec:
