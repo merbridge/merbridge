@@ -18,7 +18,7 @@ jobs:
       KIND_VERSION: v0.16.0
       KERNEL_VERSION: v5.4
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
@@ -87,7 +87,7 @@ jobs:
       KIND_VERSION: v0.16.0
       KERNEL_VERSION: v5.4
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
@@ -248,7 +248,7 @@ jobs:
       KIND_VERSION: v0.16.0
       KERNEL_VERSION: v5.4
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
