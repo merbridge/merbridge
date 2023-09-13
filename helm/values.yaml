@@ -8,6 +8,7 @@ namespace: istio-system
 mode: istio
 cniMode: false
 enableHotRestart: false
+enableAmbientMode: false
 
 
 # some settings of deployment

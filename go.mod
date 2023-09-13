@@ -6,6 +6,7 @@ require (
 	github.com/DaoCloud/ckube v1.1.0
 	github.com/cilium/ebpf v0.10.0
 	github.com/containernetworking/cni v1.1.2
+	github.com/containernetworking/plugins v1.1.1
 	github.com/florianl/go-tc v0.4.1
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/gorilla/mux v1.8.0
@@ -48,7 +49,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cncf/xds/go v0.0.0-20220520190051-1e77728a1eaa // indirect
-	github.com/containernetworking/plugins v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/docker/cli v20.10.18+incompatible // indirect
