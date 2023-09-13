@@ -57,16 +57,20 @@ var rootCmd = &cobra.Command{
 				return err
 			}
 		}
-		pw, err := process.NewProcessManager("")
-		if err != nil {
-			panic(err)
-		}
-		go func() {
-			err := pw.Run(stop)
+		var pw process.ProcessManager
+		var err error
+		if config.EnableAmbientMode {
+			pw, err = process.NewProcessManager("")
 			if err != nil {
 				panic(err)
 			}
-		}()
+			go func() {
+				err := pw.Run(stop)
+				if err != nil {
+					panic(err)
+				}
+			}()
+		}
 		// todo: wait for stop
 		if err := controller.Run(cniReady, pw, stop); err != nil {
 			log.Fatal(err)
@@ -118,4 +122,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&config.KubeConfig, "kubeconfig", "", "Kubernetes configuration file")
 	rootCmd.PersistentFlags().StringVar(&config.Context, "kubecontext", "", "The name of the kube config context to use")
 	rootCmd.PersistentFlags().BoolVar(&config.EnableHotRestart, "enable-hot-restart", false, "enable hot restart")
+	rootCmd.PersistentFlags().BoolVar(&config.EnableAmbientMode, "enable-ambient-mode", false, "enable istio ambient mode support")
 }

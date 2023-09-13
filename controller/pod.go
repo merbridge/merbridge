@@ -180,8 +180,10 @@ func addFunc(obj interface{}) {
 	if err != nil {
 		log.Errorf("update local_pod_ips %s error: %v", pod.Status.PodIP, err)
 	}
-	if err := globalPm.OnPodStatusChanged(pod.Status.PodIP, isInMesh, isAmbient, isZtunnel); err != nil {
-		log.Debugf("OnProcessStatusChanged error: %v", err)
+	if globalPm != nil {
+		if err := globalPm.OnPodStatusChanged(pod.Status.PodIP, isInMesh, isAmbient, isZtunnel); err != nil {
+			log.Debugf("OnProcessStatusChanged error: %v", err)
+		}
 	}
 }
 

@@ -90,7 +90,7 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
         __u32 *ztunnel_ip = get_ztunnel_ip();
         if (!ztunnel_ip) {
             debugf("can not get ztunnel pod ip");
-            return 1;
+            return 0;
         }
         if ((cg_info.detected_flags & ZTUNNEL_FLAG) &&
             (cg_info.flags & ZTUNNEL_FLAG)) {

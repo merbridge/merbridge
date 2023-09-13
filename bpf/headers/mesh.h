@@ -15,7 +15,6 @@ limitations under the License.
 */
 #pragma once
 #define SOCK_IP_MARK_PORT 39807
-#define AMBIENT_OUTPUT_IP 0xc0a87f02 // 192.168.127.2
 
 #define ISTIO 1
 #define LINKERD 2

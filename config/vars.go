@@ -33,21 +33,22 @@ const (
 )
 
 var (
-	Mode             string
-	IpsFile          string // not used
-	UseReconnect     = true
-	Debug            = false
-	EnableCNI        = false
-	EnableIPV4       = getEnvOrDefault("ENABLE_IPV4", "true") == "true"
-	EnableIPV6       = getEnvOrDefault("ENABLE_IPV6", "false") == "true"
-	IsKind           = false // is Kubernetes running in Docker
-	HostProc         string
-	CNIBinDir        string
-	CNIConfigDir     string
-	HostVarRun       string
-	KubeConfig       string
-	Context          string
-	EnableHotRestart = false
+	Mode              string
+	IpsFile           string // not used
+	UseReconnect      = true
+	Debug             = false
+	EnableCNI         = false
+	EnableIPV4        = getEnvOrDefault("ENABLE_IPV4", "true") == "true"
+	EnableIPV6        = getEnvOrDefault("ENABLE_IPV6", "false") == "true"
+	IsKind            = false // is Kubernetes running in Docker
+	HostProc          string
+	CNIBinDir         string
+	CNIConfigDir      string
+	HostVarRun        string
+	KubeConfig        string
+	Context           string
+	EnableHotRestart  = false
+	EnableAmbientMode = false
 )
 
 func getEnvOrDefault(name, defaultValue string) string {

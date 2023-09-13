@@ -393,7 +393,6 @@ func (w *processManager) Run(stop chan struct{}) error {
 	}
 	defer rd.Close()
 	eventChan := make(chan Event)
-	os.Setenv("HOST_PROC", config.HostProc)
 	ids, err := process.Pids()
 	if err != nil {
 		log.Errorf("read processes: %v", err)
