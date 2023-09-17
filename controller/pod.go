@@ -130,6 +130,7 @@ func addFunc(obj interface{}) {
 		for _, pod := range podMap[ns.Name] {
 			addFunc(pod)
 		}
+		return
 	}
 	pod, ok := obj.(*v1.Pod)
 	if !ok || len(pod.Status.PodIP) == 0 {
@@ -150,7 +151,8 @@ func addFunc(obj interface{}) {
 	case config.ModeKuma:
 		isInjectedSidecar = pods.IsKumaInjectedSidecar(pod)
 	}
-	isAmbient := nsMap[pod.Namespace]
+	// see https://github.com/istio/istio/blob/3b3ca8ec1632961e355f398f7357ebed9b13aa43/cni/pkg/ambient/podutil.go#L44
+	isAmbient := nsMap[pod.Namespace] && !isInjectedSidecar && pod.Labels["ambient.istio.io/redirection"] != "disabled"
 	isZtunnel := pod.Labels["app"] == "ztunnel"
 	isInMesh := false
 	if isAmbient || isInjectedSidecar || isZtunnel {

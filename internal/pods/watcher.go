@@ -69,7 +69,9 @@ func (w *Watcher) Start() error {
 		DeleteFunc: w.OnDeleteFunc,
 	})
 	kubeInformerFactory.Start(w.Stop)
-	nsInformerFac.Start(w.Stop)
+	if config.EnableAmbientMode {
+		nsInformerFac.Start(w.Stop)
+	}
 	return nil
 }
 
