@@ -443,5 +443,10 @@ func deleteFunc(obj interface{}) {
 		log.Debugf("got pod delete %s/%s", pod.Namespace, pod.Name)
 		_ip, _ := linux.IP2Linux(pod.Status.PodIP)
 		_ = ebpfs.GetLocalIPMap().Delete(_ip)
+		if globalPm != nil {
+			if err := globalPm.OnPodDeleted(pod.Status.PodIP); err != nil {
+				log.Debugf("OnPodDeleted error: %v", err)
+			}
+		}
 	}
 }

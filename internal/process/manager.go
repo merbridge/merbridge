@@ -72,7 +72,8 @@ type cgroupInfo struct {
 
 type ProcessManager interface {
 	Run(stop chan struct{}) error
-	OnPodStatusChanged(ip string, isInMesh bool, isAmbient bool, isZtunnel bool) error
+	OnPodDeleted(ip string) error
+	OnPodStatusChanged(ip string, bool, isAmbient bool, isZtunnel bool) error
 }
 
 type podInfo struct {
@@ -285,14 +286,9 @@ func (w *processManager) onProcessAdded(pid uint32) error {
 	return w.writePodInfoToCgroupMap(cgroupInode, w.podIPModeMap[ipkey])
 }
 
-func (w *processManager) onProcessExit(pid uint32) error {
+func (w *processManager) removeCgroup(cgroupInode uint64) error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	cgroupInode, ok := w.pidCgroupMap[pid]
-	if !ok {
-		return nil
-	}
-	delete(w.pidCgroupMap, pid) // delete for map
 	find := false
 	for _, cg := range w.pidCgroupMap {
 		if cgroupInode == cg {
@@ -311,7 +307,7 @@ func (w *processManager) onProcessExit(pid uint32) error {
 	}
 	ip, ok := w.cgroupIPMap[cgroupInode]
 	if !ok {
-		return fmt.Errorf("can no get ip of pid %d", pid)
+		return fmt.Errorf("can no get ip of cgroup %d", cgroupInode)
 	}
 	if len(w.ipCgroupsMap[ip]) != 0 {
 		delete(w.ipCgroupsMap[ip], cgroupInode)
@@ -322,6 +318,42 @@ func (w *processManager) onProcessExit(pid uint32) error {
 		delete(w.ipCgroupsMap, ip)
 	}
 	delete(w.cgroupIPMap, cgroupInode)
+	return nil
+}
+
+func (w *processManager) onProcessExit(pid uint32) error {
+	w.lock.RLock()
+	cgroupInode, ok := w.pidCgroupMap[pid]
+	w.lock.RUnlock()
+	if !ok {
+		return nil
+	}
+	if err := w.removeCgroup(cgroupInode); err != nil {
+		return err
+	}
+	w.lock.Lock()
+	delete(w.pidCgroupMap, pid) // delete for map
+	w.lock.Unlock()
+	return nil
+}
+
+func (w *processManager) OnPodDeleted(ip string) error {
+	w.lock.Lock()
+	if _, ok := w.podIPModeMap[ip]; ok {
+		delete(w.podIPModeMap, ip)
+	}
+	cgs := make([]uint64, 0)
+	for cg := range w.ipCgroupsMap[ip] {
+		cgs = append(cgs, cg)
+	}
+	w.lock.Unlock()
+	for _, cg := range cgs {
+		log.Debugf("removing cgroup %d for pod %s...", cg, ip)
+		err := w.removeCgroup(cg)
+		if err != nil {
+			log.Debugf("remove cgroup %d error: %v", cg, err)
+		}
+	}
 	return nil
 }
 
