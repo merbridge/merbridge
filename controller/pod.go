@@ -159,10 +159,9 @@ func addFunc(obj interface{}) {
 		isInMesh = true
 	}
 
-	if config.Mode == config.ModeOsm && !pods.IsOsmInjectedSidecar(pod) {
+	if !isInMesh {
 		return
 	}
-
 	if isZtunnel {
 		isAmbient = true
 	}
