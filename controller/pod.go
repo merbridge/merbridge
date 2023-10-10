@@ -150,6 +150,8 @@ func addFunc(obj interface{}) {
 		isInjectedSidecar = pods.IsLinkerdInjectedSidecar(pod)
 	case config.ModeKuma:
 		isInjectedSidecar = pods.IsKumaInjectedSidecar(pod)
+	case config.ModeOsm:
+		isInjectedSidecar = pods.IsOsmInjectedSidecar(pod)
 	}
 	// see https://github.com/istio/istio/blob/3b3ca8ec1632961e355f398f7357ebed9b13aa43/cni/pkg/ambient/podutil.go#L44
 	isAmbient := nsMap[pod.Namespace] && !isInjectedSidecar && pod.Labels["ambient.istio.io/redirection"] != "disabled"
