@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+#include "headers/cgroup.h"
 #include "headers/helpers.h"
 #include "headers/mesh.h"
 #include <linux/bpf.h>
@@ -24,6 +25,27 @@ limitations under the License.
 #if ENABLE_IPV4
 __section("cgroup/bind4") int mb_bind(struct bpf_sock_addr *ctx)
 {
+#if MESH == ISTIO
+    // fix original src from ztunnel to waypoint
+    struct cgroup_info cg_info;
+    if (!get_current_cgroup_info(ctx, &cg_info)) {
+        return 1;
+    }
+    if ((cg_info.detected_flags & ZTUNNEL_FLAG) &&
+        (cg_info.flags & ZTUNNEL_FLAG)) {
+        // ztunnel
+        __u32 *ztunnel_ip = get_ztunnel_ip();
+        if (!ztunnel_ip) {
+            debugf("can not get ztunnel pod ip in bind");
+            return 1;
+        }
+        // ztunnel will bind the source pod ip to upstream,
+        // we will rollback this operation because we not support TPROXY mode.
+        ctx->user_ip4 = ztunnel_ip[3];
+        debugf("successfully rewrite ztunnel bind");
+    }
+    return 1;
+#endif
 #if MESH != LINKERD
     // only works on linkerd
     return 1;

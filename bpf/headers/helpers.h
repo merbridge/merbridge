@@ -31,6 +31,10 @@ limitations under the License.
 #define ENABLE_IPV6 0
 #endif
 
+#ifndef WATCH_LEVEL
+#define WATCH_LEVEL 0
+#endif
+
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define bpf_htons(x) __builtin_bswap16(x)
 #define bpf_htonl(x) __builtin_bswap32(x)
@@ -101,6 +105,17 @@ static long (*bpf_l4_csum_replace)(struct __sk_buff *skb, __u32 offset,
 static long (*bpf_skb_store_bytes)(struct __sk_buff *skb, __u32 offset,
                                    const void *from, __u32 len, __u64 flags) =
     (void *)BPF_FUNC_skb_store_bytes;
+static long (*bpf_probe_read)(void *dst, __u32 size, const void *unsafe_ptr) =
+    (void *)BPF_FUNC_probe_read;
+// static long (*bpf_probe_read_kernel)(void *dst, __u32 size,
+//                                      const void *unsafe_ptr) = (void *)
+//     BPF_FUNC_probe_read_kernel;
+// static long (*bpf_probe_read_user)(void *dst, __u32 size,
+//                                    const void *unsafe_ptr) = (void *)
+//     BPF_FUNC_probe_read_user;
+static long (*bpf_perf_event_output)(void *ctx, struct bpf_elf_map *map,
+                                     __u64 flags, void *data, __u64 size) =
+    (void *)BPF_FUNC_perf_event_output;
 
 #ifdef PRINTNL
 #define PRINT_SUFFIX "\n"
@@ -143,7 +158,9 @@ static inline __u32 get_ipv4(__u32 *ip) { return ip[3]; }
 
 static inline void set_ipv4(__u32 *dst, __u32 src)
 {
-    memset(dst, 0, sizeof(__u32) * 3);
+    memset(dst, 0, sizeof(__u32) * 2);
+    dst[2] =
+        0xffff0000; // https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
     dst[3] = src;
 }
 
@@ -222,21 +239,6 @@ static inline int is_port_listen_udp_current_ns6(void *ctx, __u32 *ip,
     return 0;
 }
 
-struct origin_info {
-    __u32 ip[4];
-    __u32 pid;
-    __u16 port;
-    // last bit means that ip of process is detected.
-    __u16 flags;
-};
-
-struct pair {
-    __u32 sip[4];
-    __u32 dip[4];
-    __u16 sport;
-    __u16 dport;
-};
-
 struct cgroup_info {
     __u64 id;
     __u32 is_in_mesh;
@@ -255,6 +257,21 @@ struct cgroup_info {
 };
 
 #define MAX_ITEM_LEN 20
+
+struct origin_info {
+    __u32 ip[4];
+    __u32 pid;
+    __u16 port;
+    // last bit means that ip of process is detected.
+    __u16 flags;
+};
+
+struct pair {
+    __u32 sip[4];
+    __u32 dip[4];
+    __u16 sport;
+    __u16 dport;
+};
 
 struct cidr {
     __u32 net; // network order

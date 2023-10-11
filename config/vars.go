@@ -27,24 +27,28 @@ const (
 	ModeOsm         = "osm"
 	LocalPodIps     = "/sys/fs/bpf/local_pod_ips"
 	PairOriginalDst = "/sys/fs/bpf/pair_original_dst"
+	CgroupInfoMap   = "/sys/fs/bpf/cgroup_info_map"
+	SettingsMap     = "/sys/fs/bpf/settings"
+	ProcessEvents   = "/sys/fs/bpf/process_events"
 )
 
 var (
-	Mode             string
-	IpsFile          string // not used
-	UseReconnect     = true
-	Debug            = false
-	EnableCNI        = false
-	EnableIPV4       = getEnvOrDefault("ENABLE_IPV4", "true") == "true"
-	EnableIPV6       = getEnvOrDefault("ENABLE_IPV6", "false") == "true"
-	IsKind           = false // is Kubernetes running in Docker
-	HostProc         string
-	CNIBinDir        string
-	CNIConfigDir     string
-	HostVarRun       string
-	KubeConfig       string
-	Context          string
-	EnableHotRestart = false
+	Mode              string
+	IpsFile           string // not used
+	UseReconnect      = true
+	Debug             = false
+	EnableCNI         = false
+	EnableIPV4        = getEnvOrDefault("ENABLE_IPV4", "true") == "true"
+	EnableIPV6        = getEnvOrDefault("ENABLE_IPV6", "false") == "true"
+	IsKind            = false // is Kubernetes running in Docker
+	HostProc          string
+	CNIBinDir         string
+	CNIConfigDir      string
+	HostVarRun        string
+	KubeConfig        string
+	Context           string
+	EnableHotRestart  = false
+	EnableAmbientMode = false
 )
 
 func getEnvOrDefault(name, defaultValue string) string {

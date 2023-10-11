@@ -77,6 +77,51 @@ static inline int tcp_connect4(struct bpf_sock_addr *ctx)
     if (curr_pod_ip == 0) {
         debugf("get current pod ip error");
     }
+    if (cg_info.flags & AMBIENT_MESH_FLAG) {
+        __u32 dst_ip = ctx->user_ip4;
+        __u64 cookie = bpf_get_socket_cookie_addr(ctx);
+
+        // we need redirect it to envoy.
+        struct origin_info origin;
+        memset(&origin, 0, sizeof(origin));
+        set_ipv4(origin.ip, dst_ip);
+        origin.port = ctx->user_port;
+        origin.flags = 1;
+        __u32 *ztunnel_ip = get_ztunnel_ip();
+        if (!ztunnel_ip) {
+            debugf("can not get ztunnel pod ip");
+            return 0;
+        }
+        if ((cg_info.detected_flags & ZTUNNEL_FLAG) &&
+            (cg_info.flags & ZTUNNEL_FLAG)) {
+            // from ztunnel to others
+            debugf("from ztunnel pod");
+        } else {
+            // app call others
+            debugf("call from ambient user container: cookie: %d, ip: %pI4, "
+                   "port: %d",
+                   cookie, &dst_ip, bpf_htons(ctx->user_port));
+            ctx->user_ip4 = ztunnel_ip[3];
+            ctx->user_port = bpf_htons(OUT_REDIRECT_PORT);
+            struct sockaddr_in addr = {
+                .sin_addr =
+                    {
+                        .s_addr = curr_pod_ip,
+                    },
+                .sin_port = 0,
+                .sin_family = 2,
+            };
+            if (bpf_bind(ctx, &addr, sizeof(struct sockaddr_in))) {
+                debugf("bind %pI4 error", &curr_pod_ip);
+            }
+        }
+        if (bpf_map_update_elem(&cookie_original_dst, &cookie, &origin,
+                                BPF_ANY)) {
+            printk("write cookie_original_dst failed");
+            return 0;
+        }
+        return 1;
+    }
     __u64 uid = bpf_get_current_uid_gid() & 0xffffffff;
     __u32 dst_ip = ctx->user_ip4;
     if (uid != SIDECAR_USER_ID) {

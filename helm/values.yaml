@@ -8,6 +8,7 @@ namespace: istio-system
 mode: istio
 cniMode: false
 enableHotRestart: false
+enableAmbientMode: false
 
 
 # some settings of deployment
@@ -32,3 +33,4 @@ mountPath:
   varRun: /host/var/run
 dnsPolicy: ClusterFirst
 revisionHistoryLimit: 10
+watchLevel: 0

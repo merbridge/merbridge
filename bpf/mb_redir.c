@@ -44,7 +44,8 @@ __section("sk_msg") int mb_msg_redir(struct sk_msg_md *msg)
 
     long ret = bpf_msg_redirect_hash(msg, &sock_pair_map, &p, BPF_F_INGRESS);
     if (ret)
-        debugf("redirect %d bytes with eBPF successfully", msg->size);
+        debugf("redirect %d bytes with eBPF successfully, src: %pI4, dst: %pI4",
+               msg->size, &p.dip[3], &p.sip[3]);
     return 1;
 }
 

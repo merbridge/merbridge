@@ -17,6 +17,7 @@ limitations under the License.
 #include "helpers.h"
 
 #define TC_ORIGIN_FLAG 0b00001000
+#define ZTUNNEL_KEY 0x1
 
 struct bpf_elf_map __section("maps") cookie_original_dst = {
     .type = BPF_MAP_TYPE_LRU_HASH,
@@ -74,3 +75,32 @@ struct bpf_elf_map __section("maps") mark_pod_ips_map = {
     .size_value = sizeof(__u32) * 4,
     .max_elem = 65535,
 };
+
+struct bpf_elf_map __section("maps") settings = {
+    .type = BPF_MAP_TYPE_HASH,
+    .size_key = sizeof(__u32),
+    .size_value = sizeof(__u32) * 4,
+    .max_elem = 256,
+};
+
+struct bpf_elf_map __section("maps") process_events = {
+    .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+    .size_key = sizeof(__u32),
+    .size_value = sizeof(__u32),
+    // .max_elem = 1,
+};
+
+#if WATCH_LEVEL != 0
+struct bpf_elf_map __section("maps") process_level_pid = {
+    .type = BPF_MAP_TYPE_HASH,
+    .size_key = sizeof(__u32),
+    .size_value = sizeof(__u32),
+    .max_elem = 65535,
+};
+#endif
+
+static inline __u32 *get_ztunnel_ip()
+{
+    __u32 ztunnel_ip_key = ZTUNNEL_KEY;
+    return (__u32 *)bpf_map_lookup_elem(&settings, &ztunnel_ip_key);
+}

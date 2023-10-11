@@ -23,11 +23,12 @@ import (
 
 	"github.com/merbridge/merbridge/app/cmd/options"
 	"github.com/merbridge/merbridge/config"
+	"github.com/merbridge/merbridge/internal/process"
 	"github.com/merbridge/merbridge/pkg/kube"
 )
 
 // Run start to run controller to watch
-func Run(cniReady chan struct{}, stop chan struct{}) error {
+func Run(cniReady chan struct{}, pm process.ProcessManager, stop chan struct{}) error {
 	var err error
 	var client kubernetes.Interface
 
@@ -44,7 +45,7 @@ func Run(cniReady chan struct{}, stop chan struct{}) error {
 	}
 
 	// run local ip controller
-	if err = RunLocalPodController(client, stop); err != nil {
+	if err = RunLocalPodController(client, pm, stop); err != nil {
 		return fmt.Errorf("run local ip controller error: %v", err)
 	}
 

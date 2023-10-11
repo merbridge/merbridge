@@ -30,6 +30,7 @@ endif
 
 ENABLE_IPV4 ?= true
 ENABLE_IPV6 ?= false
+WATCH_LEVEL ?= 0 # if running in kind, change this to 1
 
 ifeq ($(ENABLE_IPV4),true)
 	MACROS:= $(MACROS) -DENABLE_IPV4=1
@@ -41,6 +42,10 @@ ifeq ($(ENABLE_IPV6),true)
 	MACROS:= $(MACROS) -DENABLE_IPV6=1
 else
 	MACROS:= $(MACROS) -DENABLE_IPV6=0
+endif
+
+ifneq ($(WATCH_LEVEL),0)
+	MACROS:= $(MACROS) -DWATCH_LEVEL=$(WATCH_LEVEL)
 endif
 
 # see https://stackoverflow.com/questions/15063298/how-to-check-kernel-version-in-makefile
@@ -66,6 +71,12 @@ ifneq ($(call kver_ge,5,8,999),1)
 MACROS:= $(MACROS) -DPRINTNL # kernel version less
 endif
 
+ifeq ($(call kver_ge,5,6,999),1)
+MACROS:= $(MACROS) -DXPID_OFFSET=88
+else
+MACROS:= $(MACROS) -DXPID_OFFSET=72
+endif
+
 ifeq ($(DEBUG),1)
     MACROS:= $(MACROS) -DDEBUG
 endif
@@ -79,7 +90,7 @@ ifeq ($(CGROUP2_PATH),)
 $(error It looks like your system does not have cgroupv2 enabled, or the automatic recognition fails. Please enable cgroupv2, or specify the path of cgroupv2 manually via CGROUP2_PATH parameter.)
 endif
 
-TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o mb_sendmsg.o mb_recvmsg.o mb_tc.o
+TARGETS=mb_connect.o mb_get_sockopts.o mb_redir.o mb_sockops.o mb_bind.o mb_sendmsg.o mb_recvmsg.o mb_tc.o mb_process.o
 
 init-bpffs:
 	sudo mount -t bpf bpf $(PROG_MOUNT_PATH)
@@ -112,11 +123,17 @@ load-map-cgroup_info_map:
 load-map-mark_pod_ips_map:
 	[ -f $(PROG_MOUNT_PATH)/mark_pod_ips_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/mark_pod_ips_map type hash key 4 value 16 entries 65535 name mark_pod_ips_map
 
+load-map-settings:
+	[ -f $(PROG_MOUNT_PATH)/settings ] || sudo bpftool map create $(PROG_MOUNT_PATH)/settings type hash key 4 value 16 entries 256 name settings
+
 load-map-pair_original_dst:
 	[ -f $(PROG_MOUNT_PATH)/pair_original_dst ] || sudo bpftool map create $(PROG_MOUNT_PATH)/pair_original_dst type lru_hash key 36 value 24 entries 65535 name pair_original_dst
 
 load-map-sock_pair_map:
 	[ -f $(PROG_MOUNT_PATH)/sock_pair_map ] || sudo bpftool map create $(PROG_MOUNT_PATH)/sock_pair_map type sockhash key 36 value 4 entries 65535 name sock_pair_map
+
+load-map-process_events:
+	[ -f $(PROG_MOUNT_PATH)/process_events ] || sudo bpftool map create $(PROG_MOUNT_PATH)/process_events type perf_event_array key 4 value 4 entries $(shell nproc) name process_events
 
 
 clean-maps:
@@ -127,7 +144,9 @@ clean-maps:
 		$(PROG_MOUNT_PATH)/cgroup_info_map \
 		$(PROG_MOUNT_PATH)/local_pod_ips \
 		$(PROG_MOUNT_PATH)/cookie_original_dst \
-		$(PROG_MOUNT_PATH)/mark_pod_ips_map
+		$(PROG_MOUNT_PATH)/mark_pod_ips_map \
+		$(PROG_MOUNT_PATH)/settings \
+		$(PROG_MOUNT_PATH)/process_events
 
 load-getsock: load-map-pair_original_dst
 	sudo bpftool -m prog load mb_get_sockopts.o $(PROG_MOUNT_PATH)/get_sockopts \
@@ -151,13 +170,14 @@ clean-redir:
 	sudo bpftool prog detach pinned $(PROG_MOUNT_PATH)/redir msg_verdict pinned $(PROG_MOUNT_PATH)/sock_pair_map
 	sudo rm $(PROG_MOUNT_PATH)/redir
 
-load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-cgroup_info_map load-map-mark_pod_ips_map
+load-connect: load-map-cookie_original_dst load-map-local_pod_ips load-map-process_ip load-map-cgroup_info_map load-map-mark_pod_ips_map load-map-settings
 	sudo bpftool -m prog loadall mb_connect.o $(PROG_MOUNT_PATH)/connect \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name local_pod_ips pinned $(PROG_MOUNT_PATH)/local_pod_ips \
 		map name mark_pod_ips_map pinned $(PROG_MOUNT_PATH)/mark_pod_ips_map \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
-		map name cgroup_info_map pinned $(PROG_MOUNT_PATH)/cgroup_info_map
+		map name cgroup_info_map pinned $(PROG_MOUNT_PATH)/cgroup_info_map \
+		map name settings pinned $(PROG_MOUNT_PATH)/settings
 
 attach-connect:
 ifeq ($(ENABLE_IPV4),true)
@@ -176,12 +196,13 @@ ifeq ($(ENABLE_IPV6),true)
 endif
 	sudo rm -rf $(PROG_MOUNT_PATH)/connect
 
-load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_original_dst load-map-sock_pair_map
+load-sockops: load-map-cookie_original_dst load-map-process_ip load-map-pair_original_dst load-map-sock_pair_map load-map-settings
 	sudo bpftool -m prog load mb_sockops.o $(PROG_MOUNT_PATH)/sockops \
 		map name cookie_original_dst pinned $(PROG_MOUNT_PATH)/cookie_original_dst \
 		map name process_ip pinned $(PROG_MOUNT_PATH)/process_ip \
 		map name pair_original_dst pinned $(PROG_MOUNT_PATH)/pair_original_dst \
-		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map
+		map name sock_pair_map pinned $(PROG_MOUNT_PATH)/sock_pair_map \
+		map name settings pinned $(PROG_MOUNT_PATH)/settings
 
 attach-sockops:
 	sudo bpftool cgroup attach $(CGROUP2_PATH) sock_ops pinned $(PROG_MOUNT_PATH)/sockops
@@ -190,9 +211,11 @@ clean-sockops:
 	sudo bpftool cgroup detach $(CGROUP2_PATH) sock_ops pinned $(PROG_MOUNT_PATH)/sockops
 	sudo rm -rf $(PROG_MOUNT_PATH)/sockops
 
-load-bind:
+load-bind: load-map-cgroup_info_map load-map-settings
 ifeq ($(ENABLE_IPV4),true)
-	sudo bpftool -m prog load mb_bind.o $(PROG_MOUNT_PATH)/bind
+	sudo bpftool -m prog load mb_bind.o $(PROG_MOUNT_PATH)/bind \
+		map name cgroup_info_map pinned $(PROG_MOUNT_PATH)/cgroup_info_map \
+		map name settings pinned $(PROG_MOUNT_PATH)/settings
 endif
 
 attach-bind:
@@ -252,10 +275,17 @@ ifeq ($(ENABLE_IPV6),true)
 endif
 	sudo rm -rf $(PROG_MOUNT_PATH)/recvmsg
 
+load-process: load-map-process_events
+	sudo bpftool -m prog loadall mb_process.o $(PROG_MOUNT_PATH)/mb_process \
+		map name process_events pinned $(PROG_MOUNT_PATH)/process_events
+
+clean-process:
+	sudo rm -rf $(PROG_MOUNT_PATH)/mb_process
+
 load: compile load-from-obj
 
-load-from-obj: init-bpffs load-connect load-sockops load-getsock load-redir load-bind load-sendmsg load-recvmsg
+load-from-obj: init-bpffs load-connect load-sockops load-getsock load-redir load-bind load-sendmsg load-recvmsg load-process
 
 attach: attach-connect attach-sockops attach-getsock attach-redir attach-bind attach-sendmsg attach-recvmsg
 
-clean: clean-connect clean-sockops clean-getsock clean-redir clean-maps compile-clean clean-bind clean-sendmsg clean-recvmsg
+clean: clean-process clean-connect clean-sockops clean-getsock clean-redir clean-bind clean-sendmsg clean-recvmsg clean-maps compile-clean 

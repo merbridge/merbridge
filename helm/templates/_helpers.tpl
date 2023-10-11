@@ -78,6 +78,9 @@ Merbridge args command
 {{- if ne .Values.mountPath.varRun "/host/var/run" }}
 - --host-var-run={{ .Values.mountPath.varRun }}
 {{- end }}
+{{- if .Values.enableAmbientMode }}
+- --enable-ambient-mode
+{{- end }}
 {{- end }}
 
 {{/*

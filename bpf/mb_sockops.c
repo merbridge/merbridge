@@ -25,7 +25,6 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
     __u64 cookie = bpf_get_socket_cookie_ops(skops);
 
     struct pair p;
-    memset(&p, 0, sizeof(p));
     set_ipv4(p.sip, skops->local_ip4);
     p.sport = bpf_htons(skops->local_port);
     set_ipv4(p.dip, skops->remote_ip4);
@@ -65,6 +64,10 @@ static inline int sockops_ipv4(struct bpf_sock_ops *skops)
                skops->local_port == IN_REDIRECT_PORT ||
                skops->remote_ip4 == envoy_ip) {
         bpf_sock_hash_update(skops, &sock_pair_map, &p, BPF_NOEXIST);
+    } else {
+        // ztunnel use zero copy, which may be conflict with
+        // bpf_msg_redirect_hash, so we ignore it now.
+        // __u32 *ztunnel_ip = get_ztunnel_ip();
     }
     return 0;
 }

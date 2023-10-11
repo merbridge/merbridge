@@ -25,8 +25,11 @@ import (
 )
 
 var (
-	localPodIpsMap   *ebpf.Map
-	pairOriginIpsMap *ebpf.Map
+	localPodIpsMap       *ebpf.Map
+	pairOriginIpsMap     *ebpf.Map
+	cgroupInfoMap        *ebpf.Map
+	settingsMap          *ebpf.Map
+	processPerfEventsMap *ebpf.Map
 )
 
 func InitLoadPinnedMap() error {
@@ -36,6 +39,18 @@ func InitLoadPinnedMap() error {
 		return fmt.Errorf("load map error: %v", err)
 	}
 	pairOriginIpsMap, err = ebpf.LoadPinnedMap(config.PairOriginalDst, &ebpf.LoadPinOptions{})
+	if err != nil {
+		return fmt.Errorf("load map error: %v", err)
+	}
+	cgroupInfoMap, err = ebpf.LoadPinnedMap(config.CgroupInfoMap, &ebpf.LoadPinOptions{})
+	if err != nil {
+		return fmt.Errorf("load map error: %v", err)
+	}
+	settingsMap, err = ebpf.LoadPinnedMap(config.SettingsMap, &ebpf.LoadPinOptions{})
+	if err != nil {
+		return fmt.Errorf("load map error: %v", err)
+	}
+	processPerfEventsMap, err = ebpf.LoadPinnedMap(config.ProcessEvents, &ebpf.LoadPinOptions{})
 	if err != nil {
 		return fmt.Errorf("load map error: %v", err)
 	}
@@ -54,4 +69,25 @@ func GetPairOriginalMap() *ebpf.Map {
 		_ = InitLoadPinnedMap()
 	}
 	return pairOriginIpsMap
+}
+
+func GetCgroupInfoMap() *ebpf.Map {
+	if cgroupInfoMap == nil {
+		_ = InitLoadPinnedMap()
+	}
+	return cgroupInfoMap
+}
+
+func GetSettingsMap() *ebpf.Map {
+	if settingsMap == nil {
+		_ = InitLoadPinnedMap()
+	}
+	return settingsMap
+}
+
+func GetProcessEventsMap() *ebpf.Map {
+	if processPerfEventsMap == nil {
+		_ = InitLoadPinnedMap()
+	}
+	return processPerfEventsMap
 }
