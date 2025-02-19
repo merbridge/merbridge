@@ -271,22 +271,17 @@ func writeCNIConfig(ctx context.Context, mbCNIConfig []byte) (string, error) {
 // If configured as chained CNI plugin, waits indefinitely for a main CNI config file to exist before returning
 // Or until cancelled by parent context
 func getCNIConfigFilepath(ctx context.Context) (string, error) {
-	watcher, fileModified, errChan, err := util.CreateFileWatcher(config.CNIConfigDir)
+	watcher, err := util.CreateFileWatcher(config.CNIConfigDir)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		_ = watcher.Close()
-	}()
+	defer watcher.Close()
 
 	filename, err := getDefaultCNINetwork(config.CNIConfigDir)
 	for len(filename) == 0 {
 		filename, err = getDefaultCNINetwork(config.CNIConfigDir)
 		if err == nil {
 			break
-		}
-		if err = util.WaitForFileMod(ctx, fileModified, errChan); err != nil {
-			return "", err
 		}
 	}
 
@@ -300,10 +295,11 @@ func getCNIConfigFilepath(ctx context.Context) (string, error) {
 			log.Infof("%s doesn't exist, but %s does; Using it as the CNI config file instead.", cniConfigFilepath, cniConfigFilepath[:len(cniConfigFilepath)-4])
 			cniConfigFilepath = cniConfigFilepath[:len(cniConfigFilepath)-4]
 		} else {
-			log.Infof("CNI config file %s does not exist. Waiting for file to be written...", cniConfigFilepath)
-			if err = util.WaitForFileMod(ctx, fileModified, errChan); err != nil {
-				return "", err
-			}
+			// log.Infof("CNI config file %s does not exist. Waiting for file to be written...", cniConfigFilepath)
+			// if err = util.WaitForFileMod(ctx, fileModified, errChan); err != nil {
+			// 	return "", err
+			// }
+			panic("CNI config file does not exist")
 		}
 	}
 
@@ -318,13 +314,11 @@ func getCNIConfigFilepath(ctx context.Context) (string, error) {
 func sleepCheckInstall(ctx context.Context, cniConfigFilepath string) error {
 	// Create file watcher before checking for installation
 	// so that no file modifications are missed while and after checking
-	watcher, fileModified, errChan, err := util.CreateFileWatcher(config.CNIConfigDir)
+	watcher, err := util.CreateFileWatcher(config.CNIConfigDir)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = watcher.Close()
-	}()
+	defer watcher.Close()
 
 	for {
 		if checkErr := checkInstall(cniConfigFilepath); checkErr != nil {
@@ -332,20 +326,22 @@ func sleepCheckInstall(ctx context.Context, cniConfigFilepath string) error {
 			log.Infof("Invalid configuration. %v", checkErr)
 			return nil
 		}
+
 		// Check if file has been modified or if an error has occurred during checkInstall before setting isReady to true
 		select {
-		case <-fileModified:
+		case <-watcher.Events:
 			return nil
-		case err := <-errChan:
+		case err := <-watcher.Errors:
 			return err
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			// Valid configuration; set isReady to true and wait for modifications before checking again
-			if err = util.WaitForFileMod(ctx, fileModified, errChan); err != nil {
-				// Pod set to "NotReady" before termination
-				return err
-			}
+			// // Valid configuration; set isReady to true and wait for modifications before checking again
+			// if err = util.WaitForFileMod(ctx, fileModified, errChan); err != nil {
+			// 	// Pod set to "NotReady" before termination
+			// 	return err
+			// }
+			return err
 		}
 	}
 }
@@ -353,9 +349,6 @@ func sleepCheckInstall(ctx context.Context, cniConfigFilepath string) error {
 func copyBinaries() error {
 	srcFile := "/app/merbridge-cni"
 
-	if file.IsDirWriteable(config.CNIBinDir) != nil {
-		return fmt.Errorf("directory %s is not writable", config.CNIBinDir)
-	}
 	err := file.AtomicCopy(srcFile, config.CNIBinDir, "merbridge-cni")
 	if err != nil {
 		return err
