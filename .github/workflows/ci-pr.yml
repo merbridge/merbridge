@@ -10,7 +10,7 @@ jobs:
   style-check:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [style-check]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [style-check]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: make
       run: make compile
   docker-build:
@@ -58,7 +58,7 @@ jobs:
     if: github.ref_name == 'main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
